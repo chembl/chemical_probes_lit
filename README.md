@@ -92,8 +92,11 @@ https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_35/
 ```
 In each notebook, find the configuration cell near the top and update the variable `chemblpath` for the ChEMBL path with the location of the file on your system.
 
-#### Python 3.12.4
+#### Python 3.11.7
 All scripts and notebooks in this project are written in Python. The code was developed and tested specifically with Python version 3.12.4 to ensure reproducibility and compatibility with the required packages. Using a different version may lead to unexpected errors.
+
+#### PySpark 3.3.1
+Some scripts use PySpark to load and work with large datasets.
 
 #### Computational Resources
 This pipeline is designed to process large-scale literature and genomics datasets. While PySpark is utilized for its efficiency, the computational and memory requirements remain substantial. Running the full analysis on a standard local machine is likely to be very slow or may fail due to insufficient memory.
@@ -102,9 +105,9 @@ For a timely and successful execution, we strongly recommend setting up the envi
 
 To provide a benchmark, the analysis for the manuscript was performed using the following resources. Users should aim for a comparable environment:
 
-- Memory (RAM): A minimum of 250GB is recommended. The PySpark steps are the most memory-intensive stages of the pipeline.
-- CPU Cores: The pipeline was executed using 24 cores. Performance will scale with the number of available cores, particularly for the PySpark jobs.
-- Total Runtime: The full systematic pipeline took approximately 6 hours to complete on the hardware specified above
+- Memory (RAM): The PySpark steps are the most memory-intensive stages of the pipeline. A minimum of 250GB is recommended for the script in step 1 (1_get_ner_hq_probes.py). 
+- CPU Cores: The pipeline was executed using 24 cores for script 1 and 6 for all others. Performance will scale with the number of available cores, particularly for the PySpark jobs.
+- Total Runtime: The full systematic pipeline took approximately 1.5 hours to complete on the hardware specified above
 
 ## Installation
 1. Clone the repository in your preferred local path
