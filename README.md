@@ -54,9 +54,7 @@ Please note that the initial, dictionary-based annotated dataset used as the sta
 #### Input files
 1. Annotated Literature
 
-This is the primary dataset from the EuropePMC NER pipeline, containing entity matches from scientific articles. The analysis focuses exclusively on successful "matches"—data where entities have been grounded to a standard Open Targets identifier.
-
-Although the code initially loads both "matches" and "FailedMatches," a filtering step is immediately applied to retain only the grounded "matches." This setup provides flexibility for users with internal access who may wish to adapt the pipeline to explore the "FailedMatches."  
+This is the primary dataset from the EuropePMC NER pipeline, containing entity matches from scientific articles. The analysis focuses exclusively on successful "matches"—data where entities have been grounded to a standard Open Targets identifier. 
 
     - Public Access: The required successful matches are available on the Open Targets FTP server
     https://ftp.ebi.ac.uk/pub/databases/opentargets/platform/latest/intermediate/literature_match/
@@ -93,13 +91,13 @@ https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_35/
 In each notebook, find the configuration cell near the top and update the variable `chemblpath` for the ChEMBL path with the location of the file on your system.
 
 #### Python 3.11.7
-All scripts and notebooks in this project are written in Python. The code was developed and tested specifically with Python version 3.12.4 to ensure reproducibility and compatibility with the required packages. Using a different version may lead to unexpected errors.
+All scripts and notebooks in this project are written in Python. The code was developed and tested specifically with Python version 3.11.7 to ensure reproducibility and compatibility with the required packages. Using a different version may lead to unexpected errors.
 
 #### PySpark 3.3.1
-Some scripts use PySpark to load and work with large datasets.
+Some scripts use PySpark version 3.3.1 to load and work with large datasets.
 
 #### Computational Resources
-This pipeline is designed to process large-scale literature and genomics datasets. While PySpark is utilized for its efficiency, the computational and memory requirements remain substantial. Running the full analysis on a standard local machine is likely to be very slow or may fail due to insufficient memory.
+This pipeline is designed to process large-scale literature and evidence datasets. While PySpark is utilised for its efficiency, the computational and memory requirements remain substantial. Running the full analysis on a standard local machine is likely to be very slow or may fail due to insufficient memory.
 
 For a timely and successful execution, we strongly recommend setting up the environment and running the scripts on a high-performance computing (HPC) cluster.
 
