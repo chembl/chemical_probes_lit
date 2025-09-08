@@ -149,7 +149,7 @@ The systematic pipeline consists of 5 sequential Python scripts and a final Jupy
 
     **Script:** 2_probesLit/1_get_ner_hq_probes.py.  
     **Description:** Processes the raw Open Targets literature data to extract all sentences containing mentions of the High-Quality (HQ) chemical probes.  
-    **Input:** Raw literature data (--matches and --failedMatches) and High Quality chemical probes dataset (--probes) .  
+    **Input:** Raw literature data (--matches) and High Quality chemical probes dataset (--probes) .  
     **Output:** An intermediate file containing annotated data from articles mentioning at least one HQ probe in the label field (epmc_ner_results_hq_probes.tsv) and a final file containing annotated data from articles previously found in intermediate file (1_epmc_ner_results_hq_probes_all_sent.tsv).
     
     Command to execute:
