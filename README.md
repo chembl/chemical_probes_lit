@@ -143,7 +143,7 @@ pip install -r requirements.txt
 ### Execution
 The systematic pipeline consists of 5 sequential Python scripts and a final Jupyter Notebook for plotting. It is critical to run these scripts in your python enviroment and in the specified order, as each step generates an intermediate file that serves as the input for the next.
 
-### Pipeline steps
+#### Pipeline steps
 
 1. Get NER Data for HQ Probes
 
