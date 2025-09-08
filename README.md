@@ -4,7 +4,7 @@ This repository contains all the code and scripts necessary to reproduce the ana
 
 ## Abstract
 
-This project leverages Natural Language Processing (NLP) to systematically analyze open-access scientific literature for evidence of novel target-disease (T-D) associations mediated by chemical probes. The pipeline identifies chemical probe-target-disease (P-T-D) triplets, quantifies their prevalence, and performs a temporal analysis to determine cases where probe-based evidence predates other non-literature evidence streams in platforms like Open Targets. The goal is to highlight the value of chemical probe literature as a resource for early-stage target validation and hypothesis generation in drug discovery.
+This project leverages Natural Language Processing (NLP) to systematically analyse open-access scientific literature for evidence of novel target-disease (T-D) associations mediated by chemical probes. The pipeline identifies chemical probe-target-disease (P-T-D) triplets, quantifies their prevalence, and performs a temporal analysis to determine cases where probe-based evidence predates other non-literature evidence streams in platforms like Open Targets. The goal is to highlight the value of chemical probe literature as a resource for early-stage target validation and hypothesis generation in drug discovery.
 
 ## Project structure
 ```
