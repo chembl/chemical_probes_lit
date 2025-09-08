@@ -23,11 +23,12 @@ This project leverages Natural Language Processing (NLP) to systematically analy
 │   ├── 📜 3_filter_targets.py           # Step 3: Filters triples based on validated targets.  
 │   ├── 📜 4_get_OT_evidence.py          # Step 4: Retrieves existing evidence from Open Targets.  
 │   ├── 📜 5_get_OT_dated_evidence.py    # Step 5: Retrieves time-stamped evidence from Open Targets.  
-│   └── 📓 6_plotting_data.ipynb         # Jupyter Notebook for final data visualization.  
+│   ├── 📓 6_plotting_data.ipynb         # Jupyter Notebook for final data visualisation.
+|   └── 📜 tools.py                      # Helper scripts for handling data.
 │
 ├── 📂 3_probesHQ/                       # Scripts and data to build the High-Quality (HQ) chemical probes dictionary.
 │   ├── 📂 files/                        # Raw data files for the HQ probe dictionary.
-│   ├── 📓 probes_hq_dataset.ipynb       # Notebook for creating and analyzing the HQ probe dataset.
+│   ├── 📓 probes_hq_dataset.ipynb       # Notebook for creating and analysing the HQ probe dataset.
 │   └── 📜 tools.py                      # Helper scripts for handling probe data.
 │
 ├── 📜 .gitignore                        # Specifies files and directories to be ignored by Git.
