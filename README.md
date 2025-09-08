@@ -30,7 +30,8 @@ This project leverages Natural Language Processing (NLP) to systematically analy
 │   ├── 📓 probes_hq_dataset.ipynb  # Notebook for creating and analyzing the HQ probe dataset.
 │   └── 📜 tools.py                 # Helper scripts for handling probe data.
 │
-├── 📜 .gitignore                   # Specifies files and directories to be ignored by Git.  
+├── 📜 .gitignore                   # Specifies files and directories to be ignored by Git.
+├── ⚖️ LICENCE                       # Licence especifications
 ├── 📜 requirements.txt              # File with required packages to create the Python environment.  
 └── 📄 README.md                    # This file.
 ```
