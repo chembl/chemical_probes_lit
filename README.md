@@ -154,7 +154,7 @@ The systematic pipeline consists of 5 sequential Python scripts and a final Jupy
     
     Command to execute:
     ```
-    python chemical_probes_lit/2_probesLit/1_get_ner_hq_probes.py --matches [path_to_matches_folder] --failed_matches [path_to_failed_matches_folder] --probes [path_to_HQ_chemical_probes_dictionary_dataset]
+    python chemical_probes_lit/2_probesLit/1_get_ner_hq_probes.py --matches [path_to_matches_folder] --probes [path_to_HQ_chemical_probes_dictionary_dataset]
     ```
 
 2. Get P-T-D Triples
@@ -184,7 +184,7 @@ The systematic pipeline consists of 5 sequential Python scripts and a final Jupy
 4. Get Open Targets Evidence
 
     **Script:** 2_probesLit/4_get_OT_evidence.py  
-    **Description:** Using PySpark, this script retrieves all existing evidence for the T-D pairs from the main Open Targets evidence dataset.   
+    **Description:** This script retrieves all existing evidence for the T-D pairs from the main Open Targets evidence dataset.   
     **Input:** Dataset with filtered triples from step 3 and the OT evidence dataset.   
     **Output:** An intermediate file merging probe evidence with existing OT evidence (4_ner_probes_triplets_ptpairs_ev.csv).
 
@@ -196,7 +196,7 @@ The systematic pipeline consists of 5 sequential Python scripts and a final Jupy
 5. Get Dated Open Targets Evidence
 
     **Script:** 2_probesLit/5_get_OT_dated_evidence.py   
-    **Description:** Also using PySpark, this script retrieves and merges the time-stamped (dated) evidence for the T-D pairs.    
+    **Description:** This script retrieves and merges the time-stamped (dated) evidence for the T-D pairs.    
     **Input:** Data from step 4 and the dated OT evidence dataset.   
     **Output:** The final, fully annotated dataset ready for analysis (5_ner_probes_triplets_ptpairs_evd.csv).
 
@@ -205,7 +205,7 @@ The systematic pipeline consists of 5 sequential Python scripts and a final Jupy
     python chemical_probes_lit/4_get_OT_dated_evidence.py --input data/4_ner_probes_triplets_ptpairs_ev.csv --datedevidence [path_to_OT_dated_evidence_folder]
     ```
 
-6. Plotting and Visualization
+6. Plotting and Visualisation
 
     **File:** 2_probesLit/6_plotting_data.ipynb   
     **Description:** This final Jupyter Notebook takes the processed data from the previous steps to generate the figures and tables presented in the manuscript. To run it, open and execute the cells sequentially in a Jupyter environment.
