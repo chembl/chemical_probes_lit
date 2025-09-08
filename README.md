@@ -51,7 +51,7 @@ Please note that the initial, dictionary-based annotated dataset used as the sta
 
 ## Systematic Pipeline Execution
 
-## Prerequisites
+### Prerequisites
 #### Input files
 1. Annotated Literature
 
