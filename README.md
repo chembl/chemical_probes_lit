@@ -211,5 +211,8 @@ The systematic pipeline consists of 5 sequential Python scripts and a final Jupy
 
 
 ## Licence
+This project is licensed under the MIT License. This means you are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software for any purpose, including commercial use.
+
+For the full license text, please see the `LICENSE` file in this repository.
 
 ## Citation
