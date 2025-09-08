@@ -8,32 +8,32 @@ This project leverages Natural Language Processing (NLP) to systematically analy
 
 ## Project structure
 ```
-├── 📂 1_pilot/                     # Code and data for the initial pilot study.  
-│   ├── 📂 data/                    # Data files specific to the pilot.  
-│   ├── 📂 figs/                    # Figures generated during the pilot.  
-│   ├── 📜 databases.py              # Scripts for database interactions in the pilot.  
-│   └── 📓 note_ProbesDataset.ipynb  # Exploratory notebook for the pilot dataset.  
+├── 📂 1_pilot/                          # Code and data for the initial pilot study.  
+│   ├── 📂 data/                         # Data files specific to the pilot.  
+│   ├── 📂 figs/                         # Figures generated during the pilot.  
+│   ├── 📜 databases.py                  # Scripts for database interactions in the pilot.  
+│   └── 📓 note_ProbesDataset.ipynb      # Exploratory notebook for the pilot dataset.  
 │
-├── 📂 2_probesLit/                  # Code and data for the main systematic analysis pipeline.  
-│   ├── 📂 data/                    # Intermediate and final datasets.  
-│   ├── 📂 figs/                    # Final figures for the manuscript.  
-│   ├── 📂 tables/                  # Final tables for the manuscript.  
-│   ├── 📜 1_get_ner_hq_probes.py    # Step 1: Fetches NER data for High-Quality (HQ) probes.  
-│   ├── 📜 2_get_triplets.py         # Step 2: Extracts P-T-D triples from the NER data.  
-│   ├── 📜 3_filter_targets.py      # Step 3: Filters triples based on validated targets.  
-│   ├── 📜 4_get_OT_evidence.py     # Step 4: Retrieves existing evidence from Open Targets.  
-│   ├── 📜 5_get_OT_dated_evidence.py# Step 5: Retrieves time-stamped evidence from Open Targets.  
-│   └── 📓 6_plotting_data.ipynb    # Jupyter Notebook for final data visualization.  
+├── 📂 2_probesLit/                      # Code and data for the main systematic analysis pipeline.  
+│   ├── 📂 data/                         # Intermediate and final datasets.  
+│   ├── 📂 figs/                         # Final figures for the manuscript.  
+│   ├── 📂 tables/                       # Final tables for the manuscript.  
+│   ├── 📜 1_get_ner_hq_probes.py        # Step 1: Fetches NER data for High-Quality (HQ) probes.  
+│   ├── 📜 2_get_triplets.py             # Step 2: Extracts P-T-D triples from the NER data.  
+│   ├── 📜 3_filter_targets.py           # Step 3: Filters triples based on validated targets.  
+│   ├── 📜 4_get_OT_evidence.py          # Step 4: Retrieves existing evidence from Open Targets.  
+│   ├── 📜 5_get_OT_dated_evidence.py    # Step 5: Retrieves time-stamped evidence from Open Targets.  
+│   └── 📓 6_plotting_data.ipynb         # Jupyter Notebook for final data visualization.  
 │
-├── 📂 3_probesHQ/                   # Scripts and data to build the High-Quality (HQ) chemical probes dictionary.
-│   ├── 📂 files/                   # Raw data files for the HQ probe dictionary.
-│   ├── 📓 probes_hq_dataset.ipynb  # Notebook for creating and analyzing the HQ probe dataset.
-│   └── 📜 tools.py                 # Helper scripts for handling probe data.
+├── 📂 3_probesHQ/                       # Scripts and data to build the High-Quality (HQ) chemical probes dictionary.
+│   ├── 📂 files/                        # Raw data files for the HQ probe dictionary.
+│   ├── 📓 probes_hq_dataset.ipynb       # Notebook for creating and analyzing the HQ probe dataset.
+│   └── 📜 tools.py                      # Helper scripts for handling probe data.
 │
-├── 📜 .gitignore                   # Specifies files and directories to be ignored by Git.
-├── ⚖️ LICENCE                       # Licence especifications
-├── 📜 requirements.txt              # File with required packages to create the Python environment.  
-└── 📄 README.md                    # This file.
+├── 📜 .gitignore                        # Specifies files and directories to be ignored by Git.
+├── ⚖️ LICENCE                           # Licence especifications
+├── 📜 requirements.txt                  # File with required packages to create the Python environment.  
+└── 📄 README.md                         # This file.
 ```
 ## Data Availability
 We are committed to transparency and reproducibility. This section outlines the availability of the data for both the main systematic pipeline and the preliminary pilot study.
