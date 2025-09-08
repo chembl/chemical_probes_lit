@@ -108,7 +108,7 @@ To provide a benchmark, the analysis for the manuscript was performed using the 
 - CPU Cores: The pipeline was executed using 24 cores for script 1 and 6 for all others. Performance will scale with the number of available cores, particularly for the PySpark jobs.
 - Total Runtime: The full systematic pipeline took approximately 1.5 hours to complete on the hardware specified above
 
-## Installation
+### Installation
 1. Clone the repository in your preferred local path
 
 ```
@@ -140,7 +140,7 @@ Windows:
 ```
 pip install -r requirements.txt
 ```
-## Execution
+### Execution
 The systematic pipeline consists of 5 sequential Python scripts and a final Jupyter Notebook for plotting. It is critical to run these scripts in your python enviroment and in the specified order, as each step generates an intermediate file that serves as the input for the next.
 
 ### Pipeline steps
