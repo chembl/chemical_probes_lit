@@ -1,7 +1,7 @@
 ###  Author: Melissa F. Adasme ###
 
 """
-Subsetting to accepted probe's targets
+Subsetting to accepted probes and probe's targets
 By the definition of chemical probes, they are meant to act towards specific targets or family of targets. 
 The NER dataset contains all sentences matching a chemical probe but without checking if that targets is the correct one. 
 This notebook uses the HQ probes dataset from ChEMBL to filter that.
@@ -17,7 +17,7 @@ def main(input_path, probes_path):
     ner_data = pd.read_csv(input_path, sep='\t')
     print("✅ Loaded NER probes in triples from step 2.", flush=True)
     
-    ## 2. Loading main HQ probes dataset and extracting list of genes
+    ## 2. Loading main HQ probes dataset
     hqprobes = pd.read_csv(probes_path, sep="\t")
     print("✅ Loaded HQ probe labels.", flush=True)
     
@@ -56,6 +56,7 @@ def main(input_path, probes_path):
     ensembl_ids = map_gene_ids_to_ensembl(gene_ids)
     print("✅ ENSEMBL ids list obtained", flush=True)
     
+    ### Subsetting triplets to only consider triplets with a chemical probes with their accepted targets
     # add ensembl ids column in hq dataset
     hqprobes['ENS_ID'] = hqprobes.GENE.map(ensembl_ids)
     # Subset df1 based on matching rows in df2 (different column names)
@@ -63,7 +64,7 @@ def main(input_path, probes_path):
     # Removing duplicated columns
     subset = subset.drop(columns=['CHEMBLID', 'ENS_ID'])
     # Writing output file
-    subset.to_csv('data/3_ner_probes_triplets_ptpairs.csv', sep='\t', index=False)
+    subset.to_csv('data/3_ner_probes_triplets_ptpairs.tsv', sep='\t', index=False)
     print("✅ File with NER probes data for probe-target pairs created.", flush=True)
 
 if __name__ == "__main__":

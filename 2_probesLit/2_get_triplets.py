@@ -35,7 +35,7 @@ def main(df_path, d_path):
     # Group by 'pmid' and 'sentence' (including date and section as it is all part of the same article)
     grouped = dataset_id.groupby(['pmid', 'sentence', 'date', 'section'])
     # Extracting only groups with at least one of each entity and generating triplets. Keept writing simplified by line
-    with open('data/2_ner_probes_triplets.csv', 'w') as f:
+    with open('data/2_ner_probes_triplets.tsv', 'w') as f:
         f.write(f"pmid\tdate\tsection\tCD\tGP\tDS\tsentence\n")
         for name,group in grouped:
             allent = group['entity_type'].unique()

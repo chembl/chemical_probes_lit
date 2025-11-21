@@ -38,7 +38,7 @@ def main(input_path, OTevidence_path):
     ### 3. Load OT evidence data
     otevidence = (
         spark.read.parquet(
-            OTevidence_path #"data/associationByDatasourceIndirect" 
+            OTevidence_path #"data/associationByDatasourceIndirect" #Download from corresponding ftp and save it in data folder
         )
         .selectExpr(
             "datatypeId", 

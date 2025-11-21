@@ -88,8 +88,6 @@ def main(input_path, OTdatedevidence_path):
     print("✅ All dated evidence linked.", flush=True)
 
     ## 6. Create the file with the results
-    probes_dataed.toPandas().to_csv("data/ner_probes_triplets_ptpairs_evd.csv", sep="\t", index=False)
-    ## 5. Writing output file
     temp_output_dir = "temp/evidence_output_parts"
     final_output_dir = "data/5_ner_probes_triplets_ptpairs_evd.tsv"
     write_merged_files(probes_dataed, temp_output_dir, final_output_dir) #function from tools.py

@@ -9,6 +9,7 @@ import glob
 import os
 import subprocess
 import shutil
+import pandas as pd
 
 def define_logging():
     # create logger with 'spam_application'
@@ -60,33 +61,53 @@ def initialize_sparksession() -> SparkSession:
         .getOrCreate()
     )
 
-def write_merged_files(data, temp_output_dir,final_output_file):
-    """ Given a dataframe it writes it doesn in multiple subprocess and subfiles into the temproal path and then it merges them into the output file"""
+def write_merged_files(data, temp_output_dir, final_output_file):
+    """
+    Given a Spark dataframe, writes it to temp part-files (headerless)
+    and then merges them into a single final file with one header.
+    """
     try:
-        # STEP 1: write all sub files in temporal path
+        if os.path.exists(temp_output_dir):
+            print(f"Cleaning up old temp directory: {temp_output_dir}", flush=True)
+            shutil.rmtree(temp_output_dir)
+
+        # STEP 1: Write all sub-files *without* the header
         data.write.csv(
             temp_output_dir,
             sep='\t',
-            header=True,
+            header=False,
             mode='overwrite'
         )
-        print(f"✅ Spark successfully wrote parts to {temp_output_dir}", flush=True)
-    
-        # STEP 2: Use Python's subprocess to call the shell 'cat' command. The 'shell=True' part is crucial for handling the '*' wildcard.
-        merge_command = f"cat {temp_output_dir}/part-*.csv > {final_output_file}"
+        print(f"✅ Spark successfully wrote headerless parts to {temp_output_dir}", flush=True)
+
+        # STEP 2: Manually write the header to the final file
+        # Get column names from the dataframe and format as a TSV line
+        header = "\t".join(data.columns) + "\n"
+        
+        with open(final_output_file, 'w') as f:
+            f.write(header)
+        print(f"✅ Successfully wrote header to {final_output_file}", flush=True)
+
+        # STEP 3: *Append* the headerless part-files to the final file
+        # Note the '>>' (append) instead of '>' (overwrite)
+        merge_command = f"cat {temp_output_dir}/part-*.csv >> {final_output_file}"
         print(f"Running merge command: {merge_command}")
         subprocess.run(merge_command, shell=True, check=True)
-        print(f"✅ Successfully merged files into {final_output_file}", flush=True)
-    
-    finally:
-        # STEP 3: Clean up the temporary directory.
-        print(f"Cleaning up temporary directory: {temp_output_dir}", flush=True)
-        shutil.rmtree(temp_output_dir)
+        print(f"✅ Successfully merged data into {final_output_file}", flush=True)
 
+    finally:
+        # STEP 4: Clean up the temporary directory
+        if os.path.exists(temp_output_dir):
+            print(f"Cleaning up temporary directory: {temp_output_dir}", flush=True)
+            shutil.rmtree(temp_output_dir)
 
 
 def download_files_from_ftp(ftp_dir, dir):
     """From the EBI ftp fetch the parquet files and saves them into a local folder within the project"""
+    
+    # 2. Create the local directory if it doesn't exist
+    os.makedirs(dir, exist_ok=True)
+
     # define FTP connection
     ftp_server = 'ftp.ebi.ac.uk'
     # Connect to the FTP server
@@ -96,13 +117,47 @@ def download_files_from_ftp(ftp_dir, dir):
     ftp.cwd(ftp_dir)
     # Get a list of files in the remote directory
     file_list = ftp.nlst()
+    
     # Download each file to the local directory
     for filename in file_list:
-        local_filepath = dir + filename
+        
+        # 3. Use os.path.join to correctly build the file path
+        local_filepath = os.path.join(dir, filename) 
+        
         with open(local_filepath, 'wb') as file:
             ftp.retrbinary('RETR ' + filename, file.write)
+            
     # Close the FTP connection
     ftp.quit()
+
+def find_preferred_ta(ta_string):
+    """Selects the preferred Therapeutic Area (TA) ID from a '|' separated string based on a predefined priority: EFO_ > MONDO_ > Other."""
+    # Handle missing data (NaN, None, etc.) or non-string types
+    if pd.isna(ta_string) or not isinstance(ta_string, str):
+        return pd.NA
+    # Split the string into a list of individual IDs
+    ids = ta_string.split('|')
+    # Categorize the IDs to find the highest priority.
+    efo_ids = []
+    mondo_ids = []
+    other_ids = []
+    for id_val in ids:
+        if id_val.startswith('OTAR_'):
+            efo_ids.append(id_val)
+        elif id_val.startswith('MONDO_'):
+            mondo_ids.append(id_val)
+        elif id_val.startswith('EFO_'):
+            mondo_ids.append(id_val)
+        elif id_val:  # Ensure it's not an empty string (e.g., from 'A||B')
+            other_ids.append(id_val)
+    # Return the first item from the highest-priority list that has items
+    if efo_ids:
+        return efo_ids[0]
+    if mondo_ids:
+        return mondo_ids[0]
+    if other_ids:
+        return other_ids[0]
+    return pd.NA # Return NA if the original string was empty or contained no valid IDs
 
 
 class ChemblDB():
