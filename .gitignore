@@ -2,3 +2,5 @@ pd_02_2024.sqlite
 *.csv
 *.tsv
 *.sh
+*.parquet
+data_last_modifications.png

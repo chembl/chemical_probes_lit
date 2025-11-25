@@ -8,33 +8,36 @@ This project leverages Natural Language Processing (NLP) to systematically analy
 
 ## Project structure
 ```
-├── 📂 1_pilot/                          # Code and data for the initial pilot study.  
-│   ├── 📂 data/                         # Data files specific to the pilot.  
-│   ├── 📂 figs/                         # Figures generated during the pilot.  
-│   ├── 📜 databases.py                  # Scripts for database interactions in the pilot.  
-│   └── 📓 note_ProbesDataset.ipynb      # Exploratory notebook for the pilot dataset.  
+├── 📂 1_pilot/                               # Code and data for the initial pilot study.  
+│   ├── 📂 data/                              # Data files specific to the pilot.  
+│   ├── 📂 figs/                              # Figures generated during the pilot.  
+│   ├── 📜 databases.py                       # Scripts for database interactions in the pilot.  
+│   └── 📓 note_ProbesDataset.ipynb           # Exploratory notebook for the pilot dataset.  
 │
-├── 📂 2_probesLit/                      # Code and data for the main systematic analysis pipeline.  
-│   ├── 📂 data/                         # Intermediate and final datasets.  
-│   ├── 📂 figs/                         # Final figures for the manuscript.  
-│   ├── 📂 tables/                       # Final tables for the manuscript.  
-│   ├── 📜 1_get_ner_hq_probes.py        # Step 1: Fetches NER data for High-Quality (HQ) probes.  
-│   ├── 📜 2_get_triplets.py             # Step 2: Extracts P-T-D triples from the NER data.  
-│   ├── 📜 3_filter_targets.py           # Step 3: Filters triples based on validated targets.  
-│   ├── 📜 4_get_OT_evidence.py          # Step 4: Retrieves existing evidence from Open Targets.  
-│   ├── 📜 5_get_OT_dated_evidence.py    # Step 5: Retrieves time-stamped evidence from Open Targets.  
-│   ├── 📓 6_plotting_data.ipynb         # Jupyter Notebook for final data visualisation.
-|   └── 📜 tools.py                      # Helper scripts for handling data.
+├── 📂 2_probesLit/                           # Code and data for the main systematic analysis pipeline.  
+│   ├── 📂 data/                              # Intermediate and final datasets.  
+│   ├── 📂 figs/                              # Final figures for the manuscript.  
+│   ├── 📂 tables/                            # Final tables for the manuscript.  
+|   ├── 📜 0_download_OT_files.py.            # Steo 0: download all open target files that are needed
+│   ├── 📜 1_get_ner_hq_probes.py             # Step 1: Fetches NER data for High-Quality (HQ) probes.  
+│   ├── 📜 2_get_triplets.py                  # Step 2: Extracts P-T-D triples from the NER data.  
+│   ├── 📜 3_filter_targets.py                # Step 3: Filters triples based on validated targets.  
+│   ├── 📜 4_get_OT_evidence.py               # Step 4: Retrieves existing evidence from Open Targets.  
+│   ├── 📜 5_get_OT_dated_evidence.py         # Step 5: Retrieves time-stamped evidence from Open Targets.  
+│   ├── 📜 6_map_disease_therapeutic_area.py  # Step 6: Retrieves therapeutic area (parent ontology id) from Open targets for the disease term 
+|   ├── 📜 7_get_drug_max_phase.py            # Step 7: Obtains the max clinical phase (if any drug available) for the specific T-D pair
+│   ├── 📓 6_plotting_data.ipynb              # Jupyter Notebook for final data visualisation.
+|   └── 📜 tools.py                           # Helper scripts for handling data.
 │
-├── 📂 3_probesHQ/                       # Scripts and data to build the High-Quality (HQ) chemical probes dictionary.
-│   ├── 📂 files/                        # Raw data files for the HQ probe dictionary.
-│   ├── 📓 probes_hq_dataset.ipynb       # Notebook for creating and analysing the HQ probe dataset.
-│   └── 📜 tools.py                      # Helper scripts for handling probe data.
+├── 📂 3_probesHQ/                            # Scripts and data to build the High-Quality (HQ) chemical probes dictionary.
+│   ├── 📂 files/                             # Raw data files for the HQ probe dictionary.
+│   ├── 📓 probes_hq_dataset.ipynb            # Notebook for creating and analysing the HQ probe dataset.
+│   └── 📜 tools.py                           # Helper scripts for handling probe data.
 │
-├── 📜 .gitignore                        # Specifies files and directories to be ignored by Git.
-├── ⚖️ LICENCE                           # Licence especifications
-├── 📜 requirements.txt                  # File with required packages to create the Python environment.  
-└── 📄 README.md                         # This file.
+├── 📜 .gitignore                             # Specifies files and directories to be ignored by Git.
+├── ⚖️ LICENCE                                # Licence especifications
+├── 📜 requirements.txt                       # File with required packages to create the Python environment.  
+└── 📄 README.md                              # This file.
 ```
 ## Data Availability
 We are committed to transparency and reproducibility. This section outlines the availability of the data for both the main systematic pipeline and the preliminary pilot study.
@@ -66,7 +69,7 @@ This is the primary dataset from the EuropePMC NER pipeline, containing entity m
 
 This dataset contains all existing target-disease association evidence curated by Open Targets.  
 
-    - Public Access: https://ftp.ebi.ac.uk/pub/databases/opentargets/platform/latest/output/etl/parquet/associationByDatasourceIndirect/
+    - Public Access: http://ftp.ebi.ac.uk/pub/databases/opentargets/platform/25.09/output/association_by_datasource_indirect
 
 3. Dated Open Targets Evidence
 
@@ -74,6 +77,11 @@ This dataset provides time stamps for the evidence, which is crucial for the tem
 
     - Public Access: A public version is available at Zenodo: https://zenodo.org/records/15922783
 
+4. Therapeutic area (parent ontology id) for the disease term assigned by Open Targets.
+    - Public access: http://ftp.ebi.ac.uk/pub/databases/opentargets/platform/25.09/output/disease
+
+5. Maximum clinical phase if any drug for the T-D pairs.
+    - Public access: http://ftp.ebi.ac.uk/pub/databases/opentargets/platform/25.09/output/known_drug
 
 #### ChEMBL database
 This project requires a local copy of the ChEMBL database (version 35) to extract chemical probe synonyms and other relevant metadata.
@@ -141,7 +149,7 @@ Windows:
 pip install -r requirements.txt
 ```
 ### Execution
-The systematic pipeline consists of 5 sequential Python scripts and a final Jupyter Notebook for plotting. It is critical to run these scripts in your python enviroment and in the specified order, as each step generates an intermediate file that serves as the input for the next.
+The systematic pipeline consists of 7 sequential Python scripts and a final Jupyter Notebook for plotting. It is critical to run these scripts in your python enviroment and in the specified order, as each step generates an intermediate file that serves as the input for the next. The sequential scripts have been conducted in separated steps to maximize intermediate analysis and speed up independent updates or modifications.
 
 #### Pipeline steps
 
@@ -202,10 +210,33 @@ The systematic pipeline consists of 5 sequential Python scripts and a final Jupy
 
     Command to execute:
     ```
-    python chemical_probes_lit/4_get_OT_dated_evidence.py --input data/4_ner_probes_triplets_ptpairs_ev.csv --datedevidence [path_to_OT_dated_evidence_folder]
+    python chemical_probes_lit/5_get_OT_dated_evidence.py --input data/4_ner_probes_triplets_ptpairs_ev.csv --datedevidence [path_to_OT_dated_evidence_folder]
     ```
 
-6. Plotting and Visualisation
+6. Get Therapeutic area of disease term from Open Targets 
+
+    **Script:** 2_probesLit/6_map_disease_therapeutic_area.py   
+    **Description:** This script retrieves and merges the therapeutic area for the disease term.
+    **Input:** Data from step 5 and the disease OT data.   
+    **Output:** The annotated data set with the preferred therapeutic area id for the disease (6_ner_probes_triplets_ptpairs_evd_ta.csv).
+
+    Command to execute:
+    ```
+    python chemical_probes_lit/6_map_disease_therapeutic_area.py --input data/5_ner_probes_triplets_ptpairs_evd.csv --otdisease [path_to_OT_disease_file]
+    ```
+7. Get the max clinical phase of drugs (from Open Targets) for the T-D pairs
+
+    **Script:** 2_probesLit/6_get_max_drug_phase.py   
+    **Description:** This script retrieves and merges the max clinical phase for the T-D pair (e.g. 0,1,2,3,etc).
+    **Input:** Data from step 6 and the known_drug OT data.   
+    **Output:** The annotated data set with the max clinical phase found for the T-D pairs (7_ner_probes_triplets_ptpairs_dr.csv).
+
+    Command to execute:
+    ```
+    python chemical_probes_lit/7_get_max_drug_phase.py --input data/6_ner_probes_triplets_ptpairs_evd_ta.csv --otdrug [path_to_OT_known_drug_file]
+    ```
+
+8. Plotting and Visualisation
 
     **File:** 2_probesLit/6_plotting_data.ipynb   
     **Description:** This final Jupyter Notebook takes the processed data from the previous steps to generate the figures and tables presented in the manuscript. To run it, open and execute the cells sequentially in a Jupyter environment.
