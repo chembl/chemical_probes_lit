@@ -10,6 +10,8 @@ import os
 import subprocess
 import shutil
 import pandas as pd
+import requests
+import time
 
 def define_logging():
     # create logger with 'spam_application'
@@ -158,6 +160,90 @@ def find_preferred_ta(ta_string):
     if other_ids:
         return other_ids[0]
     return pd.NA # Return NA if the original string was empty or contained no valid IDs
+
+
+def classify_pubmed_articles(pmid_list):
+    """
+    Takes a list of PMIDs, queries Europe PMC, and classifies them
+    as 'Review' or 'Primary Research/Other'.
+    """
+    base_url = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
+    results_data = []
+    
+    # Remove duplicates and ensure IDs are strings
+    pmids = list(set([str(p).strip() for p in pmid_list]))
+    
+    # Batch processing: Europe PMC handles about 20-50 complex OR queries well in one URL
+    batch_size = 20
+    
+    print(f"Processing {len(pmids)} PMIDs...")
+
+    for i in range(0, len(pmids), batch_size):
+        batch = pmids[i:i + batch_size]
+        
+        # Construct query: "ext_id:123 OR ext_id:456"
+        # We limit source to MED (PubMed) to be specific
+        query_parts = [f'ext_id:{pmid} SRC:MED' for pmid in batch]
+        query = " OR ".join(query_parts)
+        
+        params = {
+            'query': query,
+            'format': 'json',
+            'resultType': 'core',
+            'pageSize': batch_size
+        }
+
+        try:
+            response = requests.get(base_url, params=params)
+            response.raise_for_status() # Check for connection errors
+            data = response.json()
+            
+            # Map the results
+            if 'resultList' in data and 'result' in data['resultList']:
+                articles = data['resultList']['result']
+                
+                # Create a lookup dict for this batch to handle missing IDs
+                # (Europe PMC sometimes drops IDs if they don't exist)
+                found_articles = {art.get('id'): art for art in articles}
+                
+                for pmid in batch:
+                    if pmid in found_articles:
+                        article = found_articles[pmid]
+                        title = article.get('title', 'No Title Found')
+                        
+                        # EXTRACT PUBLICATION TYPES
+                        # pubTypeList is usually a dict like {'pubType': ['Review', 'Journal Article']}
+                        pub_types = article.get('pubTypeList', {}).get('pubType', [])
+                        
+                        # CLASSIFICATION LOGIC
+                        # We explicitly look for "Review" or "Systematic Review"
+                        is_review = any("Review" in pt for pt in pub_types)
+                        
+                        classification = "Review Article" if is_review else "Primary Research / Other"
+                        
+                        results_data.append({
+                            'PMID': pmid,
+                            'Classification': classification,
+                            'Publication Types': ", ".join(pub_types),
+                            'Title': title
+                        })
+                    else:
+                        results_data.append({
+                            'PMID': pmid,
+                            'Classification': "ID Not Found",
+                            'Publication Types': "N/A",
+                            'Title': "N/A"
+                        })
+            
+            # Be nice to the API
+            time.sleep(0.5)
+
+        except requests.exceptions.RequestException as e:
+            print(f"Error processing batch {i}: {e}")
+
+    # Convert to DataFrame for easy viewing/saving
+    df = pd.DataFrame(results_data)
+    return df
 
 
 class ChemblDB():
