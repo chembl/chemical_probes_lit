@@ -26,7 +26,7 @@ This project leverages Natural Language Processing (NLP) to systematically analy
 │   ├── 📜 5_get_OT_dated_evidence.py         # Step 5: Retrieves time-stamped evidence from Open Targets.  
 │   ├── 📜 6_map_disease_therapeutic_area.py  # Step 6: Retrieves therapeutic area (parent ontology id) from Open targets for the disease term 
 |   ├── 📜 7_get_drug_max_phase.py            # Step 7: Obtains the max clinical phase (if any drug available) for the specific T-D pair
-│   ├── 📓 6_plotting_data.ipynb              # Jupyter Notebook for final data visualisation.
+│   ├── 📓 8_plotting_data.ipynb              # Jupyter Notebook for final data visualisation.
 |   └── 📜 tools.py                           # Helper scripts for handling data.
 │
 ├── 📂 3_probesHQ/                            # Scripts and data to build the High-Quality (HQ) chemical probes dictionary.
