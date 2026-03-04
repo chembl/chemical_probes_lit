@@ -1,6 +1,6 @@
 # Chemical Probes in Scientific Literature: A Pipeline for Target-Disease Evidence
 
-This repository contains all the code and scripts necessary to reproduce the analysis presented in the manuscript: "Chemical Probes in Scientific Literature: Expanding and Validating Target-Disease Evidence."
+This repository contains all the code and scripts necessary to reproduce the analysis presented in the manuscript: "Chemical Probes in Scientific Literature: Expanding and Validating Target-Disease Evidence." Preprint [here](https://www.biorxiv.org/content/10.64898/2026.02.19.706919v1)
 
 ## Abstract
 
