@@ -3,4 +3,7 @@ pd_02_2024.sqlite
 *.tsv
 *.sh
 *.parquet
+*.svg
+*.png
+*.pyc
 data_last_modifications.png
