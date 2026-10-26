@@ -1,7 +1,7 @@
 from tools import download_files_from_ftp
 
 #Download the OT annotated literature
-download_files_from_ftp('pub/databases/opentargets/platform/latest/intermediate/literature_match/', 'data/literature_match')
+download_files_from_ftp('pub/databases/opentargets/platform/latest/intermediate/literature/match/', 'data/literature_match')
 
 #Download the OT evidence data
 download_files_from_ftp('pub/databases/opentargets/platform/25.09/output/association_by_datasource_indirect', 'data/association_by_datasource_indirect')

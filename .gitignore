@@ -6,4 +6,6 @@ pd_02_2024.sqlite
 *.svg
 *.png
 *.pyc
+*.db
+*.sqlite
 data_last_modifications.png
