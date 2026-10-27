@@ -2,16 +2,18 @@
 
 """
 The script uses as input the dataset with entities found in articles mentioning a chemical probe (previously created in 1_get_ner_hq_probes.py)
-It takes the data and for each 
+It takes the data and for each
 """
 
 import pandas as pd
 import argparse
+from pipeline_paths import output_path
 import itertools
 
 
-def main(df_path, d_path):
-    ## 1. Reading probes HQ dictionary 
+def main(df_path, d_path, output):
+    output = output_path(output)
+    ## 1. Reading probes HQ dictionary
     hqprobes_main = pd.read_csv(d_path, sep="\t")
     print("✅ Loaded HQ probe labels.", flush=True)
 
@@ -35,7 +37,7 @@ def main(df_path, d_path):
     # Group by 'pmid' and 'sentence' (including date and section as it is all part of the same article)
     grouped = dataset_id.groupby(['pmid', 'sentence', 'date', 'section'])
     # Extracting only groups with at least one of each entity and generating triplets. Keept writing simplified by line
-    with open('data/2_ner_probes_triplets.tsv', 'w') as f:
+    with open(output, 'w') as f:
         f.write(f"pmid\tdate\tsection\tCD\tGP\tDS\tsentence\n")
         for name,group in grouped:
             allent = group['entity_type'].unique()
@@ -45,13 +47,14 @@ def main(df_path, d_path):
                 ds = group[group['entity_type'] == 'DS']['label_id'].unique()
                 triplets = list(itertools.product(cd, gp, ds))
                 for triplet in triplets:
-                    f.write(f"{name[0]}\t{name[2]}\t{name[3]}\t{triplet[0]}\t{triplet[1]}\t{triplet[2]}\t{name[1]}\n") 
+                    f.write(f"{name[0]}\t{name[2]}\t{name[3]}\t{triplet[0]}\t{triplet[1]}\t{triplet[2]}\t{name[1]}\n")
     print("✅ Final file with OT NER triples created.",flush=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Parse a file path.')
     parser.add_argument('-i', '--input', required=True, help='Path to the main dataset') # 1_epmc_ner_results_hq_probes_all_sent.tsv
     parser.add_argument('-d', '--probes', required=True, help='Path to HQ probes dict') #HQ probes dictionary from probesSubset.csv
+    parser.add_argument('--output', required=True, help='Destination TSV file; parent directories are created.')
     args = parser.parse_args()
 
-    main(args.input, args.probes)
+    main(args.input, args.probes, args.output)

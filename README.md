@@ -15,10 +15,10 @@ This project leverages Natural Language Processing (NLP) to systematically analy
 │   └── 📓 note_ProbesDataset.ipynb           # Exploratory notebook for the pilot dataset.  
 │
 ├── 📂 2_probesLit/                           # Code and data for the main systematic analysis pipeline.  
-│   ├── 📂 data/                              # Intermediate and final datasets.  
+│   ├── 📂 data/                              # Legacy local data; new runs use external storage.
 │   ├── 📂 figs/                              # Final figures for the manuscript.  
 │   ├── 📂 tables/                            # Final tables for the manuscript.  
-|   ├── 📜 0_download_OT_files.py.            # Steo 0: download all open target files that are needed
+|   ├── 📜 0_download_OT_files.py.            # Step 0: download all open target files that are needed
 │   ├── 📜 1_get_ner_hq_probes.py             # Step 1: Fetches NER data for High-Quality (HQ) probes.  
 │   ├── 📜 2_get_triplets.py                  # Step 2: Extracts P-T-D triples from the NER data.  
 │   ├── 📜 3_filter_targets.py                # Step 3: Filters triples based on validated targets.  
@@ -61,7 +61,7 @@ Please note that the initial, dictionary-based annotated dataset used as the sta
 This is the primary dataset from the EuropePMC NER pipeline, containing entity matches from scientific articles. The analysis focuses exclusively on successful "matches"—data where entities have been grounded to a standard Open Targets identifier. 
 
     - Public Access: The required successful matches are available on the Open Targets FTP server
-    https://ftp.ebi.ac.uk/pub/databases/opentargets/platform/latest/intermediate/literature_match/
+    https://ftp.ebi.ac.uk/pub/databases/opentargets/platform/latest/intermediate/literature/match/
     - Internal Access (for development): The full dataset including "FailedMatches" (version 24.09) is available to Open Targets partners at 
     gs://open-targets-pre-data-releases/24.09/output/etl/parquet/literature/matches
 
@@ -100,10 +100,10 @@ https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_35/
 In each notebook, find the configuration cell near the top and update the variable `chemblpath` for the ChEMBL path with the location of the file on your system.
 
 #### Python 3.11.7
-All scripts and notebooks in this project are written in Python. The code was developed and tested specifically with Python version 3.11.7 to ensure reproducibility and compatibility with the required packages. Using a different version may lead to unexpected errors.
+The historical manuscript analysis used Python 3.11.7. The current dependency pins differ from that historical environment; validate your Python, Java and Spark versions together before a production run.
 
 #### PySpark 3.3.1
-Some scripts use PySpark version 3.3.1 to load and work with large datasets.
+The historical manuscript environment used PySpark 3.3.1. The current requirements.txt pins PySpark 4.1.2; use a validated Python/Java/Spark environment for your cluster. See the execution guide for this distinction.
 
 #### Computational Resources
 This pipeline is designed to process large-scale literature and evidence datasets. While PySpark is utilised for its efficiency, the computational and memory requirements remain substantial. Running the full analysis on a standard local machine is likely to be very slow or may fail due to insufficient memory.
@@ -144,102 +144,26 @@ Windows:
 ```
 .\cprobesenv\Scripts\activate.bat
 ```
-4. Install the required packages using the requirements.csv file
+4. Install the required packages using the requirements.txt file
 ```
 pip install -r requirements.txt
 ```
 ### Execution
-The systematic pipeline consists of 7 sequential Python scripts and a final Jupyter Notebook for plotting. It is critical to run these scripts in your python enviroment and in the specified order, as each step generates an intermediate file that serves as the input for the next. The sequential scripts have been conducted in separated steps to maximize intermediate analysis and speed up independent updates or modifications.
 
-#### Pipeline steps
+The main pipeline uses **explicit external input and output paths**. Keep your
+institutional Slurm scripts in an ordinary private folder outside this checkout;
+a second repository is not required.
 
-1. Get NER Data for HQ Probes
+See **[the complete execution guide](2_probesLit/README.md)** for:
 
-    **Script:** 2_probesLit/1_get_ner_hq_probes.py.  
-    **Description:** Processes the raw Open Targets literature data to extract all sentences containing mentions of the High-Quality (HQ) chemical probes.  
-    **Input:** Raw literature data (--matches) and High Quality chemical probes dataset (--probes) .  
-    **Output:** An intermediate file containing annotated data from articles mentioning at least one HQ probe in the label field (epmc_ner_results_hq_probes.tsv) and a final file containing annotated data from articles previously found in intermediate file (1_epmc_ner_results_hq_probes_all_sent.tsv).
-    
-    Command to execute:
-    ```
-    python chemical_probes_lit/2_probesLit/1_get_ner_hq_probes.py --matches [path_to_matches_folder] --probes [path_to_HQ_chemical_probes_dictionary_dataset]
-    ```
+- External storage layout and environment setup.
+- Copyable commands for downloading inputs and running steps 1–7.
+- Article-type annotation and plotting with external result directories.
+- A private Slurm job example, logging, job dependencies and migration instructions.
 
-2. Get P-T-D Triples
-
-    **Script:** 2_probesLit/2_get_triplets.py  
-    **Description:** Takes the output from step 1 and identifies potential probe-target-disease (P-T-D) triples co-occurring within the same sentence.  
-    **Input:** File from step 1 and HQ chemical probes dataset file  
-    **Output:** An intermediate file containing raw P-T-D triples (2_ner_probes_triplets.csv).
-
-    Command to execute:
-    ```
-    python chemical_probes_lit/2_get_triplets.py --input data/1_epmc_ner_results_hq_probes_all_sent.tsv --probes [path_to_HQ_chemical_probes_dictionary_dataset]
-    ```
-
-3. Filter Targets
-
-    **Script:** 2_probesLit/3_filter_targets.py   
-    **Description:** Filters the triples from step 2, retaining only those where the identified target is a known, validated target for the specific chemical probe.  
-    **Input:** Raw intermediate file with triples from step 2   
-    **Output:** An intermediate file with high-confidence, filtered triples to include the exact validated target for each chemical probe (3_ner_probes_triplets_ptpairs.csv).
-
-    Command to execute:
-    ```
-    python chemical_probes_lit/3_filter_targets.py --input data/2_ner_probes_triplets.csv --probes [path_to_HQ_chemical_probes_dictionary_dataset]
-    ```
-
-4. Get Open Targets Evidence
-
-    **Script:** 2_probesLit/4_get_OT_evidence.py  
-    **Description:** This script retrieves all existing evidence for the T-D pairs from the main Open Targets evidence dataset.   
-    **Input:** Dataset with filtered triples from step 3 and the OT evidence dataset.   
-    **Output:** An intermediate file merging probe evidence with existing OT evidence (4_ner_probes_triplets_ptpairs_ev.csv).
-
-    Command to execute:
-    ```
-    python chemical_probes_lit/4_get_OT_evidence.py --input data/3_ner_probes_triplets_ptpairs.csv --evidence [path_to_OT_evidence_folder]
-    ```
-
-5. Get Dated Open Targets Evidence
-
-    **Script:** 2_probesLit/5_get_OT_dated_evidence.py   
-    **Description:** This script retrieves and merges the time-stamped (dated) evidence for the T-D pairs.    
-    **Input:** Data from step 4 and the dated OT evidence dataset.   
-    **Output:** The final, fully annotated dataset ready for analysis (5_ner_probes_triplets_ptpairs_evd.csv).
-
-    Command to execute:
-    ```
-    python chemical_probes_lit/5_get_OT_dated_evidence.py --input data/4_ner_probes_triplets_ptpairs_ev.csv --datedevidence [path_to_OT_dated_evidence_folder]
-    ```
-
-6. Get Therapeutic area of disease term from Open Targets 
-
-    **Script:** 2_probesLit/6_map_disease_therapeutic_area.py   
-    **Description:** This script retrieves and merges the therapeutic area for the disease term.
-    **Input:** Data from step 5 and the disease OT data.   
-    **Output:** The annotated data set with the preferred therapeutic area id for the disease (6_ner_probes_triplets_ptpairs_evd_ta.csv).
-
-    Command to execute:
-    ```
-    python chemical_probes_lit/6_map_disease_therapeutic_area.py --input data/5_ner_probes_triplets_ptpairs_evd.csv --otdisease [path_to_OT_disease_file]
-    ```
-7. Get the max clinical phase of drugs (from Open Targets) for the T-D pairs
-
-    **Script:** 2_probesLit/6_get_max_drug_phase.py   
-    **Description:** This script retrieves and merges the max clinical phase for the T-D pair (e.g. 0,1,2,3,etc).
-    **Input:** Data from step 6 and the known_drug OT data.   
-    **Output:** The annotated data set with the max clinical phase found for the T-D pairs (7_ner_probes_triplets_ptpairs_dr.csv).
-
-    Command to execute:
-    ```
-    python chemical_probes_lit/7_get_max_drug_phase.py --input data/6_ner_probes_triplets_ptpairs_evd_ta.csv --otdrug [path_to_OT_known_drug_file]
-    ```
-
-8. Plotting and Visualisation
-
-    **File:** 2_probesLit/6_plotting_data.ipynb   
-    **Description:** This final Jupyter Notebook takes the processed data from the previous steps to generate the figures and tables presented in the manuscript. To run it, open and execute the cells sequentially in a Jupyter environment.
+Every analysis script requires `--output`; the downloader requires `--output-dir`.
+Old job commands that rely on writing to `data/` must be updated. The plotting
+notebook uses a configuration cell for external input, result, figure and table paths.
 
 
 ## Licence

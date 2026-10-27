@@ -68,44 +68,30 @@ def write_merged_files(data, temp_output_dir, final_output_file):
     Given a Spark dataframe, writes it to temp part-files (headerless)
     and then merges them into a single final file with one header.
     """
-    try:
-        if os.path.exists(temp_output_dir):
-            print(f"Cleaning up old temp directory: {temp_output_dir}", flush=True)
-            shutil.rmtree(temp_output_dir)
+    from pathlib import Path
+    from tempfile import TemporaryDirectory
 
-        # STEP 1: Write all sub-files *without* the header
-        data.write.csv(
-            temp_output_dir,
-            sep='\t',
-            header=False,
-            mode='overwrite'
-        )
-        print(f"✅ Spark successfully wrote headerless parts to {temp_output_dir}", flush=True)
-
-        # STEP 2: Manually write the header to the final file
-        # Get column names from the dataframe and format as a TSV line
-        header = "\t".join(data.columns) + "\n"
-        
-        with open(final_output_file, 'w') as f:
-            f.write(header)
-        print(f"✅ Successfully wrote header to {final_output_file}", flush=True)
-
-        # STEP 3: *Append* the headerless part-files to the final file
-        # Note the '>>' (append) instead of '>' (overwrite)
-        merge_command = f"cat {temp_output_dir}/part-*.csv >> {final_output_file}"
-        print(f"Running merge command: {merge_command}")
-        subprocess.run(merge_command, shell=True, check=True)
-        print(f"✅ Successfully merged data into {final_output_file}", flush=True)
-
-    finally:
-        # STEP 4: Clean up the temporary directory
-        if os.path.exists(temp_output_dir):
-            print(f"Cleaning up temporary directory: {temp_output_dir}", flush=True)
-            shutil.rmtree(temp_output_dir)
+    output = Path(final_output_file).expanduser().resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temp_parent = Path(temp_output_dir).expanduser().resolve().parent
+    temp_parent.mkdir(parents=True, exist_ok=True)
+    # Each call owns its temporary directory, including concurrent jobs.
+    with TemporaryDirectory(prefix="spark-merge-", dir=temp_parent) as scratch:
+        parts = Path(scratch) / "parts"
+        data.write.csv(str(parts), sep='\t', header=False, mode='overwrite')
+        merged = Path(scratch) / "merged.tsv"
+        with merged.open('wb') as destination:
+            destination.write(("\t".join(data.columns) + "\n").encode('utf-8'))
+            for part in sorted(parts.glob('part-*.csv')):
+                with part.open('rb') as source:
+                    shutil.copyfileobj(source, destination)
+        # Publish only after the merge succeeds; paths may contain spaces.
+        shutil.move(str(merged), str(output))
+    print(f"✅ Wrote {output}", flush=True)
 
 
 def download_files_from_ftp(ftp_dir, dir):
-    """From the EBI ftp fetch the parquet files and saves them into a local folder within the project"""
+    """From the EBI ftp fetch the parquet files and saves them into the supplied local folder"""
     
     # 2. Create the local directory if it doesn't exist
     os.makedirs(dir, exist_ok=True)

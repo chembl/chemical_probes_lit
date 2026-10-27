@@ -2,8 +2,8 @@
 
 """
 Subsetting to accepted probes and probe's targets
-By the definition of chemical probes, they are meant to act towards specific targets or family of targets. 
-The NER dataset contains all sentences matching a chemical probe but without checking if that targets is the correct one. 
+By the definition of chemical probes, they are meant to act towards specific targets or family of targets.
+The NER dataset contains all sentences matching a chemical probe but without checking if that targets is the correct one.
 This notebook uses the HQ probes dataset from ChEMBL to filter that.
 """
 
@@ -11,16 +11,18 @@ This notebook uses the HQ probes dataset from ChEMBL to filter that.
 import pandas as pd
 import requests
 import argparse
+from pipeline_paths import output_path
 
-def main(input_path, probes_path):
+def main(input_path, probes_path, output):
+    output = output_path(output)
     ## 1. Loading ner data with triplets
     ner_data = pd.read_csv(input_path, sep='\t')
     print("✅ Loaded NER probes in triples from step 2.", flush=True)
-    
+
     ## 2. Loading main HQ probes dataset
     hqprobes = pd.read_csv(probes_path, sep="\t")
     print("✅ Loaded HQ probe labels.", flush=True)
-    
+
     ## 3. mapping genes to ENSEMBL ids
     def map_gene_ids_to_ensembl(gene_ids, species='human'):
         """
@@ -55,7 +57,7 @@ def main(input_path, probes_path):
     gene_ids = hqprobes.GENE.explode().unique().tolist()
     ensembl_ids = map_gene_ids_to_ensembl(gene_ids)
     print("✅ ENSEMBL ids list obtained", flush=True)
-    
+
     ### Subsetting triplets to only consider triplets with a chemical probes with their accepted targets
     # add ensembl ids column in hq dataset
     hqprobes['ENS_ID'] = hqprobes.GENE.map(ensembl_ids)
@@ -64,13 +66,14 @@ def main(input_path, probes_path):
     # Removing duplicated columns
     subset = subset.drop(columns=['CHEMBLID', 'ENS_ID'])
     # Writing output file
-    subset.to_csv('data/3_ner_probes_triplets_ptpairs.tsv', sep='\t', index=False)
+    subset.to_csv(output, sep='\t', index=False)
     print("✅ File with NER probes data for probe-target pairs created.", flush=True)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Find all NER sentences from articles containing HQ probes.') 
+    parser = argparse.ArgumentParser(description='Find all NER sentences from articles containing HQ probes.')
     parser.add_argument('--input', required=True, help='Path to the file with triplets.')  # main dataset with articles triplets in data/ner_probes_triplets.csv
-    parser.add_argument('--probes', required=True, help='Path to the HQ probes CSV file.') #HQ probes dictionary file in ../probesHQ/files/probesSubset.csv
-    
+    parser.add_argument('--probes', required=True, help='Path to the HQ probes tab-separated file.') #HQ probes dictionary file in ../probesHQ/files/probesSubset.csv
+
+    parser.add_argument('--output', required=True, help='Destination TSV file; parent directories are created.')
     args = parser.parse_args()
-    main(args.input, args.probes, )
+    main(args.input, args.probes, args.output)

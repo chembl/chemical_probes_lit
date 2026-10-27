@@ -3,22 +3,22 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import concat_ws, col, row_number, desc
 from pyspark.sql.window import Window
 import argparse
+from pipeline_paths import output_path
 
-# Define memory settings
-# Choose a value less than the --mem you request in SLURM (e.g., 120g for a 150g node)
-driver_mem = "200g"
-executor_mem = "200g"
+def main(input_path, OTdrug_path, output):
+    output = output_path(output)
+    # Define memory settings
+    # Choose a value less than the --mem you request in SLURM (e.g., 120g for a 150g node)
+    driver_mem = "200g"
+    executor_mem = "200g"
 
-spark = SparkSession.builder \
-    .appName("Chemical Probes Lit Job") \
-    .config("spark.driver.memory", driver_mem) \
-    .config("spark.executor.memory", executor_mem) \
-    .config("spark.driver.memoryOverhead", "10g") \
-    .config("spark.driver.maxResultSize", "2g") \
-    .getOrCreate()
-
-
-def main(input_path, OTdrug_path):
+    spark = SparkSession.builder \
+        .appName("Chemical Probes Lit Job") \
+        .config("spark.driver.memory", driver_mem) \
+        .config("spark.executor.memory", executor_mem) \
+        .config("spark.driver.memoryOverhead", "10g") \
+        .config("spark.driver.maxResultSize", "2g") \
+        .getOrCreate()
     ## 1. Load NER probes with therapeutic areas
     probes_data = (
             spark.read.csv(input_path, sep="\t", header=True)
@@ -29,7 +29,7 @@ def main(input_path, OTdrug_path):
     otdrugs = (
         spark.read.parquet(OTdrug_path)
         .selectExpr(
-            'drugId', 
+            'drugId',
             'targetId',
             'diseaseId',
             'phase',
@@ -59,26 +59,27 @@ def main(input_path, OTdrug_path):
     ## 4. Map using disease ids and add new column into main dataframe
     probes_data_drug = probes_data.join(
         otdrugs_deduped,
-        ["diseaseId", "targetId"], 
+        ["diseaseId", "targetId"],
         "left"
     )
 
     ## 5. Write the final DataFrame as a .tsv
-    temp_output_dir = "temp/disease_output_parts"
-    final_output_dir = "data/7_ner_probes_triplets_ptpairs_dr.tsv"
+    temp_output_dir = output + ".parts"
+    final_output_dir = output
     write_merged_files(probes_data_drug, temp_output_dir, final_output_dir) #function from tools.py
     print("✅ File with OT dated evidence linked to chemical probes data created", flush=True)
 
     # 6. Close current spark session
-    spark.stop() 
+    spark.stop()
     print("✅ Analysis complete!", flush=True)
 
 
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Find all OT evidence for each T-D from the NER chemical probes literature data.') 
+    parser = argparse.ArgumentParser(description='Find all OT evidence for each T-D from the NER chemical probes literature data.')
     parser.add_argument('--input', required=True, help='Path to the ner triplets with P-T pairs and with dated evidence.')  # main dataset with OT evidence in data/5_ner_probes_triplets_ptpairs_evd_ta.tsv
     parser.add_argument('--otdrug', required=True, help='Path to OT drug data folder with all files.') # http://ftp.ebi.ac.uk/pub/databases/opentargets/platform/25.09/output/known_drug
+    parser.add_argument('--output', required=True, help='Destination TSV file; parent directories are created.')
     args = parser.parse_args()
-    main(args.input, args.otdrug)
+    main(args.input, args.otdrug, args.output)

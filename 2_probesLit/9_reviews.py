@@ -2,9 +2,11 @@
 
 """
 The script uses as input the dataset data/7_ner_probes_triplets_ptpairs_dr.tsv (previously created in 7_get_drug_max_phase.py)
-It takes the data and for each pmid makes a request to PubMed to retrieve the article type: primary or review. Re writes the dataset with the new column 'articleType'
+It takes the data and for each pmid makes a request to PubMed to retrieve the article type: primary or review. Writes a separate output dataset with the new column 'articleType'
 """
 
+import argparse
+from pipeline_paths import output_path
 import requests
 import time
 import pandas as pd
@@ -15,10 +17,10 @@ def get_review_status_dict(pmids):
     db = "pubmed"
     retmode = "json"
     batch_size = 200
-    
+
     # Dictionary to store results
     status_dict = {}
-    
+
     total_ids = len(pmids)
     print(f"Starting check for {total_ids} PMIDs...")
 
@@ -27,7 +29,7 @@ def get_review_status_dict(pmids):
         # 1. Prepare batch
         batch = pmids[i:i + batch_size]
         id_string = ",".join(map(str, batch))
-        
+
         payload = {
             "db": db,
             "id": id_string,
@@ -40,32 +42,32 @@ def get_review_status_dict(pmids):
             response = requests.post(base_url, data=payload)
             response.raise_for_status()
             data = response.json()
-            
+
             # 3. Process Results
             if 'result' in data:
                 result_dict = data['result']
-                
+
                 # Iterate through the IDs we *requested* to ensure every ID gets a key
                 for pmid in batch:
                     str_pmid = str(pmid)
                     is_review = False # Default assumption
-                    
+
                     # Check if data exists for this ID
                     if str_pmid in result_dict:
                         article_data = result_dict[str_pmid]
-                        
+
                         # Check pubtype list safely
                         pub_types = article_data.get('pubtype', [])
                         if "Review" in pub_types:
                             is_review = True
-                    
+
                     # Assign to dictionary
                     status_dict[str_pmid] = is_review
-            
+
             print(f"Processed batch {i} to {i+len(batch)}...")
-            
+
             # 4. Rate Limiting (0.35s sleep = ~3 requests/sec max)
-            time.sleep(0.35) 
+            time.sleep(0.35)
 
         except Exception as e:
             print(f"Error processing batch starting at index {i}: {e}")
@@ -78,12 +80,17 @@ def get_review_status_dict(pmids):
 
 
 if __name__ == "__main__":
-    # Example List
-    df = pd.read_csv('data/7_ner_probes_triplets_ptpairs_dr.tsv', sep="\t")
+    parser = argparse.ArgumentParser(description="Add PubMed article types to the step 7 dataset.")
+    parser.add_argument('--input', required=True, help='Step 7 TSV file.')
+    parser.add_argument('--output', required=True, help='Destination TSV with articleType column.')
+    args = parser.parse_args()
+    output = output_path(args.output)
+    # Load the input dataset
+    df = pd.read_csv(args.input, sep="\t")
     my_ids = df.pmid.unique().tolist()
     print("✅ dataframe loaded.", flush=True)
     # print(my_ids[:5]) # Optional: print first few to check
-    
+
     # 1. Get the dictionary
     results = get_review_status_dict(my_ids)
     print("✅ articles analysed.", flush=True)
@@ -91,7 +98,7 @@ if __name__ == "__main__":
     # 2. Process results
     # We filter specifically for True to avoid errors with None
     total_reviews = sum(1 for status in results.values() if status is True)
-    
+
     # NEW: Count the None values (failed requests)
     total_failed = sum(1 for status in results.values() if status is None)
 
@@ -99,14 +106,14 @@ if __name__ == "__main__":
     print(f"\nTotal IDs processed: {len(results)}")
     print(f"Total Reviews: {total_reviews}")
     print(f"Total Failed/None: {total_failed}")
-    
+
     # 4. Filter lists (Optional)
     review_ids = [pmid for pmid, status in results.items() if status is True]
     failed_ids = [pmid for pmid, status in results.items() if status is None]
-    
+
     if len(failed_ids) > 0:
         print(f"IDs that failed: {failed_ids}")
-    
+
     # 5. Add classification to the DataFrame
     print("\nMapping results to DataFrame...", flush=True)
     # define what the boolean values translate to
@@ -123,5 +130,5 @@ if __name__ == "__main__":
     # 6. Verify and Preview
     print(df[['pmid', 'articleType']].head())
     # Save the updated file
-    df.to_csv('data/7_ner_probes_triplets_ptpairs_dr.tsv', sep="\t", index=False)
+    df.to_csv(output, sep="\t", index=False)
     print("✅ New column articleType added to the dataset.", flush=True)

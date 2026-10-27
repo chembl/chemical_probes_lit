@@ -4,23 +4,23 @@ from tools import download_files_from_ftp
 from tools import write_merged_files
 from pyspark.sql import SparkSession
 import argparse
+from pipeline_paths import output_path
 
-# Define memory settings
-# Choose a value less than the --mem you request in SLURM (e.g., 120g for a 150g node)
-driver_mem = "200g"
-executor_mem = "200g"
+def main(input_path, OTevidence_path, output):
+    output = output_path(output)
+    # Define memory settings
+    # Choose a value less than the --mem you request in SLURM (e.g., 120g for a 150g node)
+    driver_mem = "200g"
+    executor_mem = "200g"
 
-spark = SparkSession.builder \
-    .appName("Chemical Probes Lit Job") \
-    .config("spark.driver.memory", driver_mem) \
-    .config("spark.executor.memory", executor_mem) \
-    .config("spark.driver.memoryOverhead", "10g") \
-    .config("spark.driver.maxResultSize", "2g") \
-    .getOrCreate()
-
-def main(input_path, OTevidence_path):
-    ## 1. Initialise Spark Session 
-    spark = SparkSession.builder.appName("Chemical Probes Lit Job").getOrCreate()
+    spark = SparkSession.builder \
+        .appName("Chemical Probes Lit Job") \
+        .config("spark.driver.memory", driver_mem) \
+        .config("spark.executor.memory", executor_mem) \
+        .config("spark.driver.memoryOverhead", "10g") \
+        .config("spark.driver.maxResultSize", "2g") \
+        .getOrCreate()
+    ## 1. Initialise Spark Session
     print("✅ Spark Session initialized.", flush=True)
 
     ## 2. Load probes dataset with triples
@@ -32,7 +32,7 @@ def main(input_path, OTevidence_path):
             withColumnRenamed("UNIPROT", "uniprot").withColumnRenamed("PROBE", "probe").withColumnRenamed("SET", "set")
             .withColumnRenamed("INCHI", "inchiKey").withColumnRenamed("GENE", "gene").withColumnRenamed("CONTR", "control")
             .withColumnRenamed("PREF_NAME", "prefName").withColumnRenamed("SYNOMS", "probeSyn").withColumnRenamed("SYNOMS_TARGET", "targetSyn")
-        ) 
+        )
     print("✅ Loaded NER probes triples from step 3.", flush=True)
 
     ### 3. Load OT evidence data
@@ -41,11 +41,11 @@ def main(input_path, OTevidence_path):
             OTevidence_path #"data/associationByDatasourceIndirect" #Download from corresponding ftp and save it in data folder
         )
         .selectExpr(
-            "datatypeId", 
-            'datasourceId', 
-            'diseaseId', 
-            'targetId', 
-            'score', 
+            "datatypeId",
+            'datasourceId',
+            'diseaseId',
+            'targetId',
+            'score',
             'evidenceCount',
         )
         .distinct()
@@ -57,21 +57,22 @@ def main(input_path, OTevidence_path):
     #probes_evidence = probes_evidence.withColumnRenamed("diseaseId", "DS").withColumnRenamed("targetId", "GP")
 
     ## 5. Writing output file
-    temp_output_dir = "temp/evidence_output_parts"
-    final_output_dir = "data/4_ner_probes_triplets_ptpairs_ev.tsv"
+    temp_output_dir = output + ".parts"
+    final_output_dir = output
     write_merged_files(probes_evidence, temp_output_dir, final_output_dir) #function from tools.py
     print("✅ File with OT evidence linked to chemical probes data created", flush=True)
 
     # Show the results
-    #probes_evidence.show(5) 
+    #probes_evidence.show(5)
 
     # Close current spark session
-    spark.stop() 
+    spark.stop()
     print("✅ Analysis complete!", flush=True)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Find all OT evidence for each T-D from the NER chemical probes literature data.') 
+    parser = argparse.ArgumentParser(description='Find all OT evidence for each T-D from the NER chemical probes literature data.')
     parser.add_argument('--input', required=True, help='Path to the ner triplets with P-T pairs.')  # main dataset with articles triplets in data/ner_probes_triplets_ptpairs.csv
     parser.add_argument('--evidence', required=True, help='Path to OT evidence files.') # OT evidence for target-disease pairs
+    parser.add_argument('--output', required=True, help='Destination TSV file; parent directories are created.')
     args = parser.parse_args()
-    main(args.input, args.evidence)
+    main(args.input, args.evidence, args.output)
