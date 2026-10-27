@@ -25,7 +25,7 @@ This project leverages Natural Language Processing (NLP) to systematically analy
 │   ├── 📜 4_get_OT_evidence.py               # Step 4: Retrieves existing evidence from Open Targets.  
 │   ├── 📜 5_get_OT_dated_evidence.py         # Step 5: Retrieves time-stamped evidence from Open Targets.  
 │   ├── 📜 6_map_disease_therapeutic_area.py  # Step 6: Retrieves therapeutic area (parent ontology id) from Open targets for the disease term 
-|   ├── 📜 7_get_drug_max_phase.py            # Step 7: Obtains the max clinical phase (if any drug available) for the specific T-D pair
+|   ├── 📜 7_get_drug_max_phase.py            # Step 7: Obtains the maximum disease-specific clinical stage for the specific T-D pair
 │   ├── 📓 8_plotting_data.ipynb              # Jupyter Notebook for final data visualisation.
 |   └── 📜 tools.py                           # Helper scripts for handling data.
 │
@@ -60,7 +60,7 @@ Please note that the initial, dictionary-based annotated dataset used as the sta
 
 This is the primary dataset from the EuropePMC NER pipeline, containing entity matches from scientific articles. The analysis focuses exclusively on successful "matches"—data where entities have been grounded to a standard Open Targets identifier. 
 
-    - Public Access: The required successful matches are available on the Open Targets FTP server
+    - Public Access: The required successful matches are available on the Open Targets HTTPS server
     https://ftp.ebi.ac.uk/pub/databases/opentargets/platform/latest/intermediate/literature/match/
     - Internal Access (for development): The full dataset including "FailedMatches" (version 24.09) is available to Open Targets partners at 
     gs://open-targets-pre-data-releases/24.09/output/etl/parquet/literature/matches
@@ -69,7 +69,7 @@ This is the primary dataset from the EuropePMC NER pipeline, containing entity m
 
 This dataset contains all existing target-disease association evidence curated by Open Targets.  
 
-    - Public Access: http://ftp.ebi.ac.uk/pub/databases/opentargets/platform/25.09/output/association_by_datasource_indirect
+    - Public Access: http://ftp.ebi.ac.uk/pub/databases/opentargets/platform/26.09/output/association_by_datasource_indirect
 
 3. Dated Open Targets Evidence
 
@@ -78,15 +78,15 @@ This dataset provides time stamps for the evidence, which is crucial for the tem
     - Public Access: A public version is available at Zenodo: https://zenodo.org/records/15922783
 
 4. Therapeutic area (parent ontology id) for the disease term assigned by Open Targets.
-    - Public access: http://ftp.ebi.ac.uk/pub/databases/opentargets/platform/25.09/output/disease
+    - Public access: http://ftp.ebi.ac.uk/pub/databases/opentargets/platform/26.09/output/disease
 
-5. Maximum clinical phase if any drug for the T-D pairs.
-    - Public access: http://ftp.ebi.ac.uk/pub/databases/opentargets/platform/25.09/output/known_drug
+5. Disease-specific clinical stages of drugs linked to T-D pairs (Clinical Target + Clinical Indication).
+    - Public access: https://ftp.ebi.ac.uk/pub/databases/opentargets/platform/26.09/output/clinical_target/ and https://ftp.ebi.ac.uk/pub/databases/opentargets/platform/26.09/output/clinical_indication/
 
 #### ChEMBL database
 This project requires a local copy of the ChEMBL database (version 35) to extract chemical probe synonyms and other relevant metadata.
 
-- Navigate to the ChEMBL 35 release page on the EBI FTP server:
+- Navigate to the ChEMBL 35 release page on the EBI HTTPS server:
 ```
 https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_35/
 ```

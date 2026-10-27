@@ -1,85 +1,74 @@
-from tools import write_merged_files
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import concat_ws, col, row_number, desc
-from pyspark.sql.window import Window
+"""Add disease-specific maximum clinical stage using OT clinical datasets."""
 import argparse
+from clinical_stages import STAGE_RANK
 from pipeline_paths import output_path
 
-def main(input_path, OTdrug_path, output):
+
+def clinical_pairs(targets, indications):
+    """One representative drug per target/disease, with deterministic tie-breaking.
+
+    Clinical Target is used only for drug/target links, never its across-indication
+    maximum. Clinical Indication supplies the disease and disease-specific stage.
+    """
+    from pyspark.sql import functions as f
+    from pyspark.sql.window import Window
+
+    for name, frame, required in (
+        ('clinical_target', targets, {'drugId', 'targetId'}),
+        ('clinical_indication', indications, {'drugId', 'diseaseId', 'maxClinicalStage'}),
+    ):
+        missing = required - set(frame.columns)
+        if missing:
+            raise ValueError(f'{name} is missing required columns: {sorted(missing)}')
+
+    links = targets.select('drugId', 'targetId').dropna().distinct()
+    stages = indications.select('drugId', 'diseaseId', 'maxClinicalStage').dropna(
+        subset=['drugId', 'diseaseId'])
+    invalid = stages.filter(
+        f.col('maxClinicalStage').isNotNull()
+        & ~f.col('maxClinicalStage').isin(list(STAGE_RANK))
+    ).select('maxClinicalStage').distinct().limit(20).collect()
+    if invalid:
+        raise ValueError(f'Unrecognised clinical stages; update the explicit ranking: {invalid}')
+    # A mapped indication with a missing stage is still clinical evidence.
+    stages = stages.fillna({'maxClinicalStage': 'UNKNOWN'})
+    mapping = f.create_map(*[f.lit(value) for pair in STAGE_RANK.items() for value in pair])
+    joined = links.join(stages, 'drugId', 'inner').withColumn(
+        'clinicalStageRank', mapping[f.col('maxClinicalStage')])
+    window = Window.partitionBy('targetId', 'diseaseId').orderBy(
+        f.col('clinicalStageRank').desc(), f.col('drugId').asc())
+    return (joined.withColumn('_row', f.row_number().over(window))
+            .filter(f.col('_row') == 1).drop('_row')
+            .withColumn('hasClinicalIndication', f.lit(True)))
+
+
+def main(input_path, clinical_target_path, clinical_indication_path, output):
+    from pyspark.sql import SparkSession, functions as f
+    from tools import write_merged_files
+
     output = output_path(output)
-    # Define memory settings
-    # Choose a value less than the --mem you request in SLURM (e.g., 120g for a 150g node)
-    driver_mem = "200g"
-    executor_mem = "200g"
-
-    spark = SparkSession.builder \
-        .appName("Chemical Probes Lit Job") \
-        .config("spark.driver.memory", driver_mem) \
-        .config("spark.executor.memory", executor_mem) \
-        .config("spark.driver.memoryOverhead", "10g") \
-        .config("spark.driver.maxResultSize", "2g") \
-        .getOrCreate()
-    ## 1. Load NER probes with therapeutic areas
-    probes_data = (
-            spark.read.csv(input_path, sep="\t", header=True)
-        )
-    print("✅ Loaded NER probes with therapeutic areas from step 6.", flush=True)
-
-    ## 2. Get OT drug data
-    otdrugs = (
-        spark.read.parquet(OTdrug_path)
-        .selectExpr(
-            'drugId',
-            'targetId',
-            'diseaseId',
-            'phase',
-            'status'
-        )
-        .distinct()
-    )
-    print("✅ Loaded drug data from OT.", flush=True)
-
-    ## 3. De-duplicate drug data to get only the max phase for each key
-    # group by the join keys: diseaseId and targetId.
-    window_spec = (
-        Window.partitionBy("diseaseId", "targetId")
-              .orderBy(col("phase").desc()) # Order by phase descending
-    )
-    # Apply the window function
-    otdrugs_deduped = (
-        otdrugs
-        # Create a row number 'rn' for each group, starting at 1 for the max phase
-        .withColumn("rn", row_number().over(window_spec))
-        # Keep only the rows where the row number is 1 (i.e., the max phase)
-        .where(col("rn") == 1)
-        # Drop the temporary row number column
-        .drop("rn")
-    )
-
-    ## 4. Map using disease ids and add new column into main dataframe
-    probes_data_drug = probes_data.join(
-        otdrugs_deduped,
-        ["diseaseId", "targetId"],
-        "left"
-    )
-
-    ## 5. Write the final DataFrame as a .tsv
-    temp_output_dir = output + ".parts"
-    final_output_dir = output
-    write_merged_files(probes_data_drug, temp_output_dir, final_output_dir) #function from tools.py
-    print("✅ File with OT dated evidence linked to chemical probes data created", flush=True)
-
-    # 6. Close current spark session
-    spark.stop()
-    print("✅ Analysis complete!", flush=True)
+    spark = (SparkSession.builder.appName('Chemical Probes Clinical Stage')
+             .config('spark.driver.memory', '200g')
+             .config('spark.executor.memory', '200g')
+             .config('spark.driver.memoryOverhead', '10g')
+             .config('spark.driver.maxResultSize', '2g').getOrCreate())
+    try:
+        probes = spark.read.csv(input_path, sep='\t', header=True)
+        targets = spark.read.parquet(clinical_target_path)
+        indications = spark.read.parquet(clinical_indication_path)
+        pairs = clinical_pairs(targets, indications)
+        result = probes.join(pairs, ['diseaseId', 'targetId'], 'left').withColumn(
+            'hasClinicalIndication', f.coalesce(f.col('hasClinicalIndication'), f.lit(False)))
+        write_merged_files(result, output + '.parts', output)
+    finally:
+        spark.stop()
 
 
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Find all OT evidence for each T-D from the NER chemical probes literature data.')
-    parser.add_argument('--input', required=True, help='Path to the ner triplets with P-T pairs and with dated evidence.')  # main dataset with OT evidence in data/5_ner_probes_triplets_ptpairs_evd_ta.tsv
-    parser.add_argument('--otdrug', required=True, help='Path to OT drug data folder with all files.') # http://ftp.ebi.ac.uk/pub/databases/opentargets/platform/25.09/output/known_drug
-    parser.add_argument('--output', required=True, help='Destination TSV file; parent directories are created.')
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--input', required=True, help='Step 6 TSV file.')
+    parser.add_argument('--clinical-target', required=True, help='Clinical Target parquet directory.')
+    parser.add_argument('--clinical-indication', required=True, help='Clinical Indication parquet directory.')
+    parser.add_argument('--output', required=True, help='Destination TSV; parent directories are created.')
     args = parser.parse_args()
-    main(args.input, args.otdrug, args.output)
+    main(args.input, args.clinical_target, args.clinical_indication, args.output)

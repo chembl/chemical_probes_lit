@@ -19,7 +19,8 @@ repository; the private scripts folder is an ordinary directory on your cluster.
 │       ├── literature_match/
 │       ├── association_by_datasource_indirect/
 │       ├── disease/
-│       ├── known_drug/
+│       ├── clinical_target/
+│       ├── clinical_indication/
 │       └── download_manifest.json
 └── runs/analysis_001/
     ├── intermediate/
@@ -74,7 +75,7 @@ cluster's Spark environment, for example `SPARK_LOCAL_DIRS` for local-mode jobs.
 
 ## Inputs that must be prepared separately
 
-Step 0 downloads only the four Open Targets datasets shown above. You must also
+Step 0 downloads only the five Open Targets datasets shown above. You must also
 provide:
 
 - The HQ probes dictionary built using `3_probesHQ/probes_hq_dataset.ipynb`.
@@ -99,23 +100,26 @@ without starting Spark or downloading data.
 ```bash
 python "$CODE_DIR/2_probesLit/0_download_OT_files.py" \
     --output-dir "$OT_DIR" \
-    --release 25.09 \
+    --release 26.09 \
     --literature-release latest
 ```
 
-These defaults preserve the previous script's combination of release `25.09` for
-association/disease/drug data and `latest` for literature. `latest` changes over
+These defaults select release `26.09` for
+association/disease/clinical data and `latest` for literature. `latest` changes over
 time. For reproducibility, choose a literature release where the required dataset
-is available, or supply its complete FTP directory using `--literature-ftp-dir`.
-FTP layouts can differ between releases; an unavailable path causes the download
+is available, or supply its complete server directory using `--literature-dir`.
+Directory layouts can differ between releases; an unavailable path causes the download
 to fail. This change does not verify upstream availability or schema compatibility.
 
-The downloader writes `download_manifest.json` after all four downloads succeed,
-recording requested releases, source URLs and completion time. It does not resolve
+The downloader writes `download_manifest.json` after all five downloads succeed,
+recording requested releases, source URLs, filenames and completion time. It does not resolve
 `latest` to a fixed release or calculate checksums. Retain the downloaded snapshot
 and record checksums separately if exact input identity is required. Downloads
-replace same-named local files; they do not remove stale files from older snapshots
-or resume partially downloaded files. Use an empty destination for a new snapshot.
+replace same-named local files. Stale parquet filenames are rejected; interrupted
+files are retried from the beginning rather than resumed. Use an empty destination
+for a new snapshot. All five listings are validated before any data files are fetched.
+Use `--check-only` with the same arguments to validate listings without downloading.
+Files are streamed to `.part` files and renamed only after successful transfers.
 
 ### 1. Find articles mentioning HQ probes and retain their annotations
 
@@ -178,12 +182,13 @@ python "$CODE_DIR/2_probesLit/6_map_disease_therapeutic_area.py" \
     --output "$RUN_DIR/intermediate/6_ner_probes_triplets_ptpairs_evd_ta.tsv"
 ```
 
-### 7. Add maximum drug clinical phase
+### 7. Add maximum disease-specific clinical stage
 
 ```bash
 python "$CODE_DIR/2_probesLit/7_get_drug_max_phase.py" \
     --input "$RUN_DIR/intermediate/6_ner_probes_triplets_ptpairs_evd_ta.tsv" \
-    --otdrug "$OT_DIR/known_drug" \
+    --clinical-target "$OT_DIR/clinical_target" \
+    --clinical-indication "$OT_DIR/clinical_indication" \
     --output "$RUN_DIR/results/7_ner_probes_triplets_ptpairs_dr.tsv"
 ```
 
@@ -315,3 +320,66 @@ and test TSV merging, including paths with spaces, temporary-file cleanup and
 preserving an existing output after a simulated failure. They do not validate the
 full Spark analysis, remote downloads or scientific results; validate those using
 your real datasets on the cluster.
+
+## Clinical datasets migration (26.09)
+
+`known_drug` has been retired. Step 0 now downloads five datasets over **HTTPS**,
+including `clinical_target` and `clinical_indication`; it does not download
+`clinical_report`, because trial status is not used by this analysis. Directory
+listings are checked before downloads, and each transfer is retried on network
+failure. A successful listing does not establish schema compatibility: step 7
+validates required columns and rejects unrecognised stage labels.
+
+Step 7 now requires `--clinical-target` and `--clinical-indication` instead of
+`--otdrug`. It extracts distinct `drugId,targetId` links from Clinical Target,
+ignoring its disease array and its across-indication maximum. It joins these links
+to mapped `drugId,diseaseId,maxClinicalStage` rows in Clinical Indication. Thus a
+drug's stage for disease A is never used as its stage for disease B. This is a
+mechanism-of-action-based target attribution, not proof that a trial isolated that
+target's effect. Unmapped drug/disease identifiers cannot be joined and are omitted.
+
+For each target–disease pair, the highest-ranked disease-specific stage wins;
+ties select the lexicographically first drug ID for a reproducible representative.
+The output preserves the input rows and adds:
+
+| Column | Meaning |
+| --- | --- |
+| `drugId` | Representative drug at the highest stage for the pair |
+| `maxClinicalStage` | Original indication stage label |
+| `clinicalStageRank` | Explicit ordering, **not a numeric trial phase** |
+| `hasClinicalIndication` | Whether a mapped drug indication was joined |
+
+The old `phase` and unused `status` columns are removed. No matched indication has
+null drug/stage/rank and `hasClinicalIndication=false`. A mapped indication with a
+missing stage is retained as `UNKNOWN` (rank 0), not treated as absence of evidence.
+The notebook excludes **all matched indications**, including UNKNOWN and preclinical,
+from its strict no-drug-evidence subset. It displays category labels rather than
+mislabeling ranks as phases. Its separate ChEMBL chemical-probe `maxPhase` analysis
+is unchanged. Re-run steps 7 and 9 before running the updated notebook.
+
+Ordering (low to high): UNKNOWN, PRECLINICAL, IND, EARLY_PHASE_1, PHASE_1,
+PHASE_1_2, PHASE_2, PHASE_2_3, PHASE_3, PREAPPROVAL, PHASE_4, APPROVAL,
+WITHDRAWAL. The supplied indication labels are preserved; we do not recompute
+Open Targets' aggregation. Their documentation describes mapping supporting
+PHASE_4/WITHDRAWAL evidence to aggregate APPROVAL. This is a historical development
+summary, not a guarantee of current authorisation or trial status.
+
+Sources: [clinical stages and sources](https://platform-docs.opentargets.org/drug/clinical-report),
+[Clinical Indication aggregation](https://platform-docs.opentargets.org/disease-or-phenotype/drugs),
+[Clinical Target scope](https://platform-docs.opentargets.org/target/drugs),
+[upstream schemas](https://github.com/opentargets/clinical_mining/blob/main/src/clinical_mining/schemas.py).
+The actual 26.09 parquet schemas and clinical listing availability still need to
+be checked on the cluster; the implementation fails explicitly if required fields
+or files are missing. Updating data sources changes coverage and counts relative
+to historical Known Drugs analyses.
+
+To check download availability before submission, run script 0 with the same
+release/output arguments and `--check-only`. This fetches only listings. Use a fresh
+snapshot for a different release. An old `known_drug` folder is never read by the
+updated pipeline.
+
+Optional Spark integration tests (requires compatible Java and PySpark):
+
+```bash
+RUN_SPARK_TESTS=1 PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v
+```
