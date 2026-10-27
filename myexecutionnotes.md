@@ -288,11 +288,11 @@ or calculate checksums. Preserve the input snapshot for reproducibility.
 
 ## 12. Before starting step 1
 
-The switch from internal OT literature to public literature still requires a
-schema check on the downloaded data. Step 1 requires these parquet fields:
+The public literature schema has been inspected and `mappedId` is the selected
+entity identifier. Updated step 1 requires these parquet fields:
 
 ```text
-pmid, label, keywordId, type, pubDate, section, text
+pmid, label, mappedId, type, pubDate, section, text
 ```
 
 Triplet extraction expects entity types `CD`, `GP` and `DS`. Public literature
@@ -334,3 +334,11 @@ updated plotting notebook. Output now contains `maxClinicalStage`,
 Ranks are not phases; UNKNOWN is distinct from no matched indication. The actual
 26.09 parquet schemas still need cluster validation. See the execution guide's
 clinical migration section for scientific interpretation and ordering.
+
+### Literature identifier update
+
+Step 1 now reads `mappedId` and writes it as `label_id`; the remaining steps keep
+the same TSV interface. Update the required-column list in your private
+`cluster/check_inputs.sh` from `keywordId` to `mappedId`, then rerun that validation
+job so it can continue to the clinical schemas. Updating the repository does not
+edit that private shell script. No additional mapping/validity filter was added.

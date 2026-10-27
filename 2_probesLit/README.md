@@ -135,6 +135,15 @@ The intermediate file contains HQ probe mentions; the final file contains all
 annotations for those articles. If omitted, `--intermediate-output` defaults to
 `<output>.hq_mentions.tsv`. It must differ from the final output path.
 
+Step 1 expects the public `literature/match` parquet schema with `pmid`, `label`,
+`mappedId`, `type`, `pubDate`, `section`, and `text`. It exports **`mappedId` as
+`label_id`**, so downstream TSV column names and step 2 arguments are unchanged.
+`mappedId` is already one mapped entity ID per row; do not explode `entityIds`
+again. Distinct mapped IDs for the same mention are retained, while identical
+projected rows are deduplicated as before. No new `isMapped`/`isValid` filtering
+is introduced: use the public valid-match dataset, not failed matches. Legacy
+inputs containing only `keywordId` fail with an explicit schema error.
+
 ### 2. Extract probe–target–disease triplets
 
 ```bash

@@ -3,7 +3,8 @@
 """
 The script uses the EPM literature annotations from Open Targets. Data is organised with each found entity reported in one row,
 so the script first identifies articles mentioning a chemical probe and then subsets the data to obtain all rows (entities) associated with that article.
-The input file can be obtained from the OT cloud (if you have access) or from the public FTP.
+Use the public Open Targets literature/match parquet dataset downloaded by step 0.
+The mappedId field is exported as label_id for downstream pipeline steps.
 """
 
 import pyspark.sql.functions as f
@@ -50,10 +51,20 @@ def main(probes_path, matches_path, output, intermediate_output=None):
 
 
     # 3. Load OT NER dataset which includes only the matches (OT grounded entities)
+    matches = spark.read.parquet(matches_path)
+    required = {'pmid', 'label', 'mappedId', 'type', 'pubDate', 'section', 'text'}
+    missing = required - set(matches.columns)
+    if missing:
+        spark.stop()
+        raise ValueError(
+            f"Literature matches are missing required columns: {sorted(missing)}. "
+            "Use the public literature/match dataset with mappedId; "
+            "legacy keywordId inputs are not supported by this version."
+        )
     epmc_ner_results = (
-        spark.read.parquet(matches_path)
+        matches
         .selectExpr(
-            "pmid", "label", "keywordId as label_id", "type as entity_type",
+            "pmid", "label", "mappedId as label_id", "type as entity_type",
             "pubDate as date", "section as section", "text as sentence",
         )
         .distinct()
