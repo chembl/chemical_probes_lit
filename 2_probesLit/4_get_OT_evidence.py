@@ -1,3 +1,4 @@
+from tsv_format import read_spark_tsv
 ###  Author: Melissa F. Adasme ###
 
 from tools import download_files_from_ftp
@@ -25,7 +26,7 @@ def main(input_path, OTevidence_path, output):
 
     ## 2. Load probes dataset with triples
     probes = (
-            spark.read.csv(input_path, sep="\t", header=True)
+            read_spark_tsv(spark, input_path)
             .distinct()
             .withColumnRenamed("DS", "diseaseId").withColumnRenamed("GP", "targetId")
             .withColumnRenamed("CD", "probeId").withColumnRenamed("SETID", "setId").

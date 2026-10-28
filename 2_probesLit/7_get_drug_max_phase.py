@@ -1,3 +1,4 @@
+from tsv_format import read_spark_tsv
 """Add disease-specific maximum clinical stage using OT clinical datasets."""
 import argparse
 from clinical_stages import STAGE_RANK
@@ -53,7 +54,7 @@ def main(input_path, clinical_target_path, clinical_indication_path, output):
              .config('spark.driver.memoryOverhead', '10g')
              .config('spark.driver.maxResultSize', '2g').getOrCreate())
     try:
-        probes = spark.read.csv(input_path, sep='\t', header=True)
+        probes = read_spark_tsv(spark, input_path)
         targets = spark.read.parquet(clinical_target_path)
         indications = spark.read.parquet(clinical_indication_path)
         pairs = clinical_pairs(targets, indications)

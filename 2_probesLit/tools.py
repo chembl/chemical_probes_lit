@@ -1,3 +1,4 @@
+from tsv_format import SPARK_TSV_OPTIONS
 from psutil import virtual_memory
 from pyspark.sql import SparkSession
 from pyspark import SparkConf, SparkConf
@@ -78,7 +79,7 @@ def write_merged_files(data, temp_output_dir, final_output_file):
     # Each call owns its temporary directory, including concurrent jobs.
     with TemporaryDirectory(prefix="spark-merge-", dir=temp_parent) as scratch:
         parts = Path(scratch) / "parts"
-        data.write.csv(str(parts), sep='\t', header=False, mode='overwrite')
+        data.write.csv(str(parts), header=False, mode='overwrite', **SPARK_TSV_OPTIONS)
         merged = Path(scratch) / "merged.tsv"
         with merged.open('wb') as destination:
             destination.write(("\t".join(data.columns) + "\n").encode('utf-8'))

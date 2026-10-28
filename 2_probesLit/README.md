@@ -392,3 +392,19 @@ Optional Spark integration tests (requires compatible Java and PySpark):
 ```bash
 RUN_SPARK_TESTS=1 PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v
 ```
+
+## TSV quoting and migration of older outputs
+
+Pipeline TSV files now use double quotes around fields containing special characters,
+and double embedded quotes (`""`) rather than backslash-escaped quotes. Backslashes
+in labels and LaTeX remain literal. Spark readers use multiline parsing with the
+same dialect; pandas uses its default quoting with `sep="\t"` and no `escapechar`.
+Step 2 uses a CSV writer rather than manually concatenating fields, preserving tabs
+and newlines inside sentences. Spark output also preserves leading/trailing spaces.
+
+**Regenerate step 1 outputs from the downloaded parquet after this change**, then
+rerun step 2 and subsequent steps. Older Spark TSV exports used a different dialect;
+do not mix old and new outputs or use `escapechar="\\"` to compensate. That setting
+can consume a literal trailing backslash and merge two fields. No malformed rows
+are skipped. The Spark round-trip regression can be run with `RUN_SPARK_TESTS=1`
+in an environment with Java/PySpark; the default suite tests step 2 text preservation.

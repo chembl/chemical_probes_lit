@@ -1,3 +1,4 @@
+from tsv_format import read_spark_tsv
 from tools import write_merged_files
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import concat_ws
@@ -20,7 +21,7 @@ def main(input_path, OTdisease_path, output):
         .getOrCreate()
     ## 1. Load NER probes with dated evidence dataset
     probes_data = (
-            spark.read.csv(input_path, sep="\t", header=True)
+            read_spark_tsv(spark, input_path)
         )
     print("✅ Loaded NER probes with dated evidence from step 5.", flush=True)
 

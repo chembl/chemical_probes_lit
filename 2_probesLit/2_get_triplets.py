@@ -9,6 +9,7 @@ import pandas as pd
 import argparse
 from pipeline_paths import output_path
 import itertools
+import csv
 
 
 def main(df_path, d_path, output):
@@ -37,8 +38,9 @@ def main(df_path, d_path, output):
     # Group by 'pmid' and 'sentence' (including date and section as it is all part of the same article)
     grouped = dataset_id.groupby(['pmid', 'sentence', 'date', 'section'])
     # Extracting only groups with at least one of each entity and generating triplets. Keept writing simplified by line
-    with open(output, 'w') as f:
-        f.write(f"pmid\tdate\tsection\tCD\tGP\tDS\tsentence\n")
+    with open(output, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f, delimiter='\t', lineterminator='\n')
+        writer.writerow(['pmid', 'date', 'section', 'CD', 'GP', 'DS', 'sentence'])
         for name,group in grouped:
             allent = group['entity_type'].unique()
             if 'CD'in allent and 'GP'in allent and 'DS'in allent:
@@ -47,7 +49,7 @@ def main(df_path, d_path, output):
                 ds = group[group['entity_type'] == 'DS']['label_id'].unique()
                 triplets = list(itertools.product(cd, gp, ds))
                 for triplet in triplets:
-                    f.write(f"{name[0]}\t{name[2]}\t{name[3]}\t{triplet[0]}\t{triplet[1]}\t{triplet[2]}\t{name[1]}\n")
+                    writer.writerow([name[0], name[2], name[3], *triplet, name[1]])
     print("✅ Final file with OT NER triples created.",flush=True)
 
 if __name__ == "__main__":

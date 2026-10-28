@@ -1,3 +1,4 @@
+from tsv_format import read_spark_tsv
 ###  Author: Melissa F. Adasme ###
 
 """
@@ -41,7 +42,7 @@ def main(probes_path, matches_path, output, intermediate_output=None):
 
     # 2. Define the list of High Quality probes
     hq_probes = (
-        spark.read.csv(probes_path, sep="\t", header=True)
+        read_spark_tsv(spark, probes_path)
         .selectExpr("SYNOMS as probes")
         .select(f.explode(f.split(f.col("probes"), ", ")))
         .distinct()
@@ -85,7 +86,7 @@ def main(probes_path, matches_path, output, intermediate_output=None):
     # 5. Read intermediate file to get PMIDs and find all sentences
     # Articles of interest are identified from the intermediate file created above
     pmids_of_interest = (
-        spark.read.csv(inter_output_dir, sep="\t", header=True)
+        read_spark_tsv(spark, inter_output_dir)
         .selectExpr("pmid as pmid")
         .distinct()
     )

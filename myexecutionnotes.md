@@ -342,3 +342,18 @@ the same TSV interface. Update the required-column list in your private
 `cluster/check_inputs.sh` from `keywordId` to `mappedId`, then rerun that validation
 job so it can continue to the clinical schemas. Updating the repository does not
 edit that private shell script. No additional mapping/validity filter was added.
+
+## TSV parsing fix: regenerate step 1 before retrying step 2
+
+The original Spark TSV dialect disagreed with pandas on quote escaping. A global
+backslash escape is not a safe workaround: labels such as `NF-\` and LaTeX sentences
+contain literal backslashes. Updated code uses doubled quotes consistently, preserves
+backslashes and whitespace, and supports multiline fields in Spark readers. Step 2
+also writes properly quoted TSV instead of concatenating raw sentence text.
+
+After committing/pushing and pulling the updated code on the cluster, rerun the
+existing step 1 job to regenerate BOTH TSV outputs from the original downloaded
+parquet. Wait for successful completion, then rerun step 2. No downloads need to be
+repeated. Do not skip bad rows or add `escapechar` to pandas. Existing same-named
+step 1 outputs will be replaced; copy them elsewhere first if retaining the old
+exports is useful. Spark round-trip tests require the cluster Java/PySpark environment.
