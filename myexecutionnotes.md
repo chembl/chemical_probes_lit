@@ -377,3 +377,24 @@ pair_absent, dates_missing, no_association and matched. The older dated snapshot
 provides incomplete coverage of current associations; interpret temporal results
 only within that coverage. Neither missing dates nor missing source matches imply
 absence of historical evidence. Existing step 4/5 job arguments are unchanged.
+
+## Script 9: chunked article-type annotation
+
+After updating the cluster checkout, run script 9 using the existing environment:
+
+```bash
+python -u "$CODE_DIR/2_probesLit/9_reviews.py" \
+    --input "$RUN_DIR/results/7_ner_probes_triplets_ptpairs_dr.tsv" \
+    --output "$RUN_DIR/results/9_ner_probes_triplets_reviews.tsv" \
+    --cache "$RUN_DIR/results/pubmed_article_types.sqlite" \
+    --chunk-size 10000
+```
+
+Put this command in a private Slurm job; start with 32 GB memory and network access.
+It does not require Spark. Two passes through the TSV are expected. Successful
+PubMed lookups persist in SQLite; restarting with the same cache only queries
+unresolved/new IDs. Missing results remain blank rather than being marked primary.
+Check the completion log for unresolved counts before review-exclusion analysis.
+Do not rerun steps 1–7. Allow space for another roughly input-sized TSV. Output is
+published after all chunks are written; writing restarts after interruption, but
+cached API work is retained. The notebook's own large-file memory needs remain.

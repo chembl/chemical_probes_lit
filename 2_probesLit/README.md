@@ -449,3 +449,41 @@ older snapshot describe only the subset with available dates.
 
 The existing step 4 and step 5 CLI arguments are unchanged. Update the cluster
 checkout and rerun step 4, then step 5. Steps 1–3 and downloads need not be repeated.
+
+## Large-file article annotation (script 9)
+
+Script 9 processes the step 7 TSV in two passes, without loading the full dataset
+or all unique PMIDs into memory. Pass 1 collects unique valid numeric PMIDs into a
+SQLite cache; PubMed lookups run in batches of 200 with timeouts, retries and rate
+limiting. Each batch is committed, so restarting reuses successful classifications
+and retries unresolved IDs. Pass 2 adds `articleType` in chunks and preserves the
+original field text, row order and row count. Quotes, backslashes, tabs and embedded
+newlines use the shared TSV convention.
+
+```bash
+python "$CODE_DIR/2_probesLit/9_reviews.py" \
+    --input "$RUN_DIR/results/7_ner_probes_triplets_ptpairs_dr.tsv" \
+    --output "$RUN_DIR/results/9_ner_probes_triplets_reviews.tsv" \
+    --cache "$RUN_DIR/results/pubmed_article_types.sqlite" \
+    --chunk-size 10000
+```
+
+The cache defaults to `<output>.pubmed.sqlite`. Use the same cache when restarting;
+use a new cache to refresh previously successful PubMed classifications. Do not run
+multiple writers against the same cache/output. Keep the input unchanged during the
+run. The output is written to a temporary sibling and published only on completion;
+an existing final output survives a failed run. Output writing restarts from the
+beginning, while completed API lookups resume. A force-killed job may leave an orphan
+`.part` file; remove it only after confirming its job has stopped.
+
+Failed, missing, invalid or unclassifiable PubMed records leave `articleType` blank,
+not `primary`. The completion log reports unresolved IDs and unclassified rows; a
+successful job may still have incomplete API coverage. As before, `primary` means a
+returned nonempty publication-type list without the exact `Review` label, not a
+validated primary-research study design. Interpret or exclude unknown classifications
+explicitly in subsequent analyses. The plotting notebook still has its own memory
+requirements; this change only bounds script 9's working data.
+
+For the current 89 GB input, start with a 32 GB Slurm allocation and reduce
+`--chunk-size` if necessary. Memory depends on row width; this is not a guarantee.
+Allow space for a complete additional TSV, the SQLite cache and its temporary tables.

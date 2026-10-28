@@ -1,134 +1,130 @@
-### Author: Melissa F. Adasme
-
-"""
-The script uses as input the dataset data/7_ner_probes_triplets_ptpairs_dr.tsv (previously created in 7_get_drug_max_phase.py)
-It takes the data and for each pmid makes a request to PubMed to retrieve the article type: primary or review. Writes a separate output dataset with the new column 'articleType'
-"""
-
+"""Annotate a large TSV in chunks, with resumable SQLite PubMed lookups."""
 import argparse
-from pipeline_paths import output_path
-import requests
+from datetime import datetime, timezone
+from pathlib import Path
+import sqlite3
+import tempfile
 import time
 import pandas as pd
+import requests
 
-def get_review_status_dict(pmids):
-    # Configuration
-    base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
-    db = "pubmed"
-    retmode = "json"
-    batch_size = 200
+URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi'
 
-    # Dictionary to store results
-    status_dict = {}
 
-    total_ids = len(pmids)
-    print(f"Starting check for {total_ids} PMIDs...")
-
-    # Loop through batches
-    for i in range(0, total_ids, batch_size):
-        # 1. Prepare batch
-        batch = pmids[i:i + batch_size]
-        id_string = ",".join(map(str, batch))
-
-        payload = {
-            "db": db,
-            "id": id_string,
-            "retmode": retmode,
-            "version": "2.0"
-        }
-
+def fetch_batch(session, pmids):
+    """Return successful classifications only; absent/invalid records stay unknown."""
+    for attempt in range(3):
         try:
-            # 2. API Request
-            response = requests.post(base_url, data=payload)
+            response = session.post(URL, data={
+                'db': 'pubmed', 'id': ','.join(pmids), 'retmode': 'json',
+                'version': '2.0', 'tool': 'chemical_probes_lit',
+            }, timeout=(20, 120))
             response.raise_for_status()
-            data = response.json()
-
-            # 3. Process Results
-            if 'result' in data:
-                result_dict = data['result']
-
-                # Iterate through the IDs we *requested* to ensure every ID gets a key
-                for pmid in batch:
-                    str_pmid = str(pmid)
-                    is_review = False # Default assumption
-
-                    # Check if data exists for this ID
-                    if str_pmid in result_dict:
-                        article_data = result_dict[str_pmid]
-
-                        # Check pubtype list safely
-                        pub_types = article_data.get('pubtype', [])
-                        if "Review" in pub_types:
-                            is_review = True
-
-                    # Assign to dictionary
-                    status_dict[str_pmid] = is_review
-
-            print(f"Processed batch {i} to {i+len(batch)}...")
-
-            # 4. Rate Limiting (0.35s sleep = ~3 requests/sec max)
-            time.sleep(0.35)
-
-        except Exception as e:
-            print(f"Error processing batch starting at index {i}: {e}")
-            # If a batch fails, you might want to mark them as False or None to check later
-            for pmid in batch:
-                if str(pmid) not in status_dict:
-                    status_dict[str(pmid)] = None # or None
-
-    return status_dict
+            result = response.json().get('result')
+            if not isinstance(result, dict):
+                raise ValueError('PubMed response has no result object')
+            labels = {}
+            for pmid in pmids:
+                record = result.get(pmid)
+                if not isinstance(record, dict) or record.get('error'):
+                    continue
+                types = record.get('pubtype')
+                if not isinstance(types, list) or not types or not all(isinstance(t, str) for t in types):
+                    continue
+                labels[pmid] = 'review' if 'Review' in types else 'primary'
+            return labels
+        except (requests.RequestException, ValueError) as error:
+            print(f'PubMed attempt {attempt + 1}/3 failed: {error}', flush=True)
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+        finally:
+            # Below the unauthenticated three-requests-per-second limit.
+            time.sleep(0.4)
+    return {}
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Add PubMed article types to the step 7 dataset.")
+def chunks(path, size, **kwargs):
+    with pd.read_csv(path, sep='\t', dtype=str, keep_default_na=False,
+                     chunksize=size, **kwargs) as reader:
+        yield from reader
+
+
+def annotate(input_path, output_path, cache_path, chunk_size=10000):
+    source, output, cache = [Path(p).expanduser().resolve() for p in (input_path, output_path, cache_path)]
+    if len({source, output, cache}) != 3:
+        raise ValueError('Input, output and cache must be different paths')
+    if chunk_size < 1:
+        raise ValueError('Chunk size must be positive')
+    output.parent.mkdir(parents=True, exist_ok=True)
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(cache)
+    temporary = None
+    try:
+        connection.execute('CREATE TABLE IF NOT EXISTS classifications (pmid TEXT PRIMARY KEY, article_type TEXT, checked_at TEXT)')
+        connection.execute('PRAGMA temp_store=FILE')
+        connection.execute('CREATE TEMP TABLE run_pmids (pmid TEXT PRIMARY KEY)')
+        rows = 0
+        # First pass parses only PMID into memory; distinct identifiers live on disk.
+        for frame in chunks(source, chunk_size, usecols=['pmid']):
+            ids = [(p,) for p in frame.pmid.unique() if p.isascii() and p.isdigit() and int(p) > 0]
+            connection.executemany('INSERT OR IGNORE INTO run_pmids VALUES (?)', ids)
+            connection.executemany('INSERT OR IGNORE INTO classifications(pmid) VALUES (?)', ids)
+            connection.commit()
+            rows += len(frame)
+            if rows % (chunk_size * 100) == 0:
+                print(f'Scanned {rows:,} input rows', flush=True)
+        connection.execute('CREATE TEMP TABLE pending AS SELECT r.pmid FROM run_pmids r JOIN classifications c USING(pmid) WHERE c.article_type IS NULL')
+        total = connection.execute('SELECT count(*) FROM run_pmids').fetchone()[0]
+        pending = connection.execute('SELECT count(*) FROM pending').fetchone()[0]
+        print(f'{rows:,} rows; {total:,} unique valid PMIDs; {pending:,} need lookup', flush=True)
+        cursor = connection.execute('SELECT pmid FROM pending ORDER BY pmid')
+        processed = 0
+        with requests.Session() as session:
+            while batch := cursor.fetchmany(200):
+                ids = [r[0] for r in batch]
+                labels = fetch_batch(session, ids)
+                timestamp = datetime.now(timezone.utc).isoformat()
+                connection.executemany('UPDATE classifications SET article_type=?, checked_at=? WHERE pmid=?',
+                                       [(labels.get(p), timestamp, p) for p in ids])
+                connection.commit()
+                processed += len(ids)
+                print(f'Looked up {processed:,}/{pending:,}; unresolved in batch: {len(ids) - len(labels)}', flush=True)
+        unresolved = connection.execute('SELECT count(*) FROM run_pmids r JOIN classifications c USING(pmid) WHERE c.article_type IS NULL').fetchone()[0]
+        # Second pass preserves field text (including NA literals, IDs and backslashes).
+        with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', newline='',
+                                         dir=output.parent, prefix=output.name + '.', suffix='.part', delete=False) as handle:
+            temporary = Path(handle.name)
+            first = True
+            written = unknown_rows = 0
+            for frame in chunks(source, chunk_size):
+                ids = list(frame.pmid.unique())
+                labels = {}
+                for offset in range(0, len(ids), 900):
+                    batch = ids[offset:offset + 900]
+                    placeholders = ','.join('?' for _ in batch)
+                    labels.update(connection.execute(f'SELECT pmid, article_type FROM classifications WHERE pmid IN ({placeholders})', batch))
+                frame['articleType'] = frame.pmid.map(labels).fillna('')
+                unknown_rows += (frame.articleType == '').sum()
+                frame.to_csv(handle, sep='\t', index=False, header=first)
+                first = False
+                written += len(frame)
+                print(f'Wrote {written:,}/{rows:,} rows', flush=True)
+            if written != rows:
+                raise ValueError('Input row count changed between passes; keep the input unchanged')
+        temporary.replace(output)
+        temporary = None
+        print(f'Completed: {written:,} rows; {unresolved:,} unresolved valid PMIDs; {unknown_rows:,} rows without articleType. Cache: {cache}', flush=True)
+    finally:
+        connection.close()
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--input', required=True, help='Step 7 TSV file.')
-    parser.add_argument('--output', required=True, help='Destination TSV with articleType column.')
+    parser.add_argument('--output', required=True, help='Separate annotated TSV destination.')
+    parser.add_argument('--cache', help='SQLite cache; defaults to OUTPUT.pubmed.sqlite. Successful lookups are reused.')
+    parser.add_argument('--chunk-size', type=int, default=10000, help='Rows per chunk (default: 10000). Reduce for very wide rows.')
     args = parser.parse_args()
-    output = output_path(args.output)
-    # Load the input dataset
-    df = pd.read_csv(args.input, sep="\t")
-    my_ids = df.pmid.unique().tolist()
-    print("✅ dataframe loaded.", flush=True)
-    # print(my_ids[:5]) # Optional: print first few to check
-
-    # 1. Get the dictionary
-    results = get_review_status_dict(my_ids)
-    print("✅ articles analysed.", flush=True)
-
-    # 2. Process results
-    # We filter specifically for True to avoid errors with None
-    total_reviews = sum(1 for status in results.values() if status is True)
-
-    # NEW: Count the None values (failed requests)
-    total_failed = sum(1 for status in results.values() if status is None)
-
-    # 3. Print stats
-    print(f"\nTotal IDs processed: {len(results)}")
-    print(f"Total Reviews: {total_reviews}")
-    print(f"Total Failed/None: {total_failed}")
-
-    # 4. Filter lists (Optional)
-    review_ids = [pmid for pmid, status in results.items() if status is True]
-    failed_ids = [pmid for pmid, status in results.items() if status is None]
-
-    if len(failed_ids) > 0:
-        print(f"IDs that failed: {failed_ids}")
-
-    # 5. Add classification to the DataFrame
-    print("\nMapping results to DataFrame...", flush=True)
-    # define what the boolean values translate to
-    def label_article(status):
-        if status is True:
-            return 'review'
-        elif status is False:
-            return 'primary'
-        else:
-            return None # Handle the None/Failed cases
-    # We map the dictionary to the dataframe
-    # Note: .astype(str) is crucial because your dict keys are strings
-    df['articleType'] = df['pmid'].astype(str).map(results).apply(label_article)
-    # 6. Verify and Preview
-    print(df[['pmid', 'articleType']].head())
-    # Save the updated file
-    df.to_csv(output, sep="\t", index=False)
-    print("✅ New column articleType added to the dataset.", flush=True)
+    annotate(args.input, args.output, args.cache or args.output + '.pubmed.sqlite', args.chunk_size)
