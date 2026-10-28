@@ -1,3 +1,6 @@
+from association_schema import join_dated_evidence
+import json
+from pathlib import Path
 from tsv_format import read_spark_tsv
 from tools import write_merged_files
 from pyspark.sql import SparkSession
@@ -35,6 +38,8 @@ def main(input_path, OTdatedevidence_path, output):
     ## 3. Get a list of all subfolders
     data_folder = OTdatedevidence_path # path of the main folder containing al subfolders for each data type
     subfolders = [f.path for f in os.scandir(data_folder) if f.is_dir()]
+    if not subfolders:
+        raise ValueError(f"No dated evidence subdirectories in {data_folder}")
     print("✅ Subfolders retrieved.", flush=True)
 
 
@@ -72,20 +77,20 @@ def main(input_path, OTdatedevidence_path, output):
     ## 5. Link probes taregt-disease pairs with dated evidence. Perform the join on both diseaseId and targetId
     #probes_dataed = probes_dataev.join(probes_data, ["diseaseId", "targetId", "datasourceId"], "right_outer")
 
-    probes_dataed = (
-        probes_dataev
-        .groupBy("diseaseId", "targetId", "datasourceId")
-        .agg(
-            collect_list("curationYear").alias("allcurationYears"),  # Collect all curationYears (optional)
-            collect_list("publicationYear").alias("allpublicationYears"),  # Collect all publicationYears (optional)
-            collect_list("studyYear").alias("allstudyYears")  # Collect all studyYears (optional)
-        )
-        .join(probes_data, ["diseaseId", "targetId", "datasourceId"], "right_outer")
-        .withColumn("allcurationYears", when(size(col("allcurationYears")) == 0, None).otherwise(col("allcurationYears")))
-        .withColumn("allpublicationYears", when(size(col("allpublicationYears")) == 0, None).otherwise(col("allpublicationYears")))
-        .withColumn("allstudyYears", when(size(col("allstudyYears")) == 0, None).otherwise(col("allstudyYears")))
-    )
-    print("✅ All dated evidence linked.", flush=True)
+    probes_dataed = join_dated_evidence(probes_data, probes_dataev)
+    # Count unique association keys, not repeated literature sentences.
+    coverage = probes_dataed.select('diseaseId', 'targetId', 'datasourceId', 'datedEvidenceStatus').distinct()
+    report = [row.asDict() for row in coverage.groupBy('datasourceId', 'datedEvidenceStatus').count().collect()]
+    report.sort(key=lambda row: (row['datasourceId'] or '', row['datedEvidenceStatus']))
+    report_path = output + '.dated_coverage.json'
+    Path(report_path).write_text(json.dumps({
+        'dated_evidence_input': str(Path(OTdatedevidence_path).resolve()),
+        'join_policy': 'Exact diseaseId, targetId, datasourceId; no source aliases',
+        'counts_by_unique_association_key': report,
+    }, indent=2) + '\n')
+    print(f"Dated-evidence coverage: {report_path}", flush=True)
+    for row in report:
+        print(row, flush=True)
 
     ## 6. Create the file with the results
     temp_output_dir = output + ".parts"

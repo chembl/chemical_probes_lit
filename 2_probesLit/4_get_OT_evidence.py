@@ -1,7 +1,7 @@
 from tsv_format import read_spark_tsv
 ###  Author: Melissa F. Adasme ###
 
-from tools import download_files_from_ftp
+from association_schema import normalize_associations
 from tools import write_merged_files
 from pyspark.sql import SparkSession
 import argparse
@@ -37,20 +37,7 @@ def main(input_path, OTevidence_path, output):
     print("✅ Loaded NER probes triples from step 3.", flush=True)
 
     ### 3. Load OT evidence data
-    otevidence = (
-        spark.read.parquet(
-            OTevidence_path #"data/associationByDatasourceIndirect" #Download from corresponding ftp and save it in data folder
-        )
-        .selectExpr(
-            "datatypeId",
-            'datasourceId',
-            'diseaseId',
-            'targetId',
-            'score',
-            'evidenceCount',
-        )
-        .distinct()
-    )
+    otevidence = normalize_associations(spark.read.parquet(OTevidence_path))
     print("✅ Loaded OT evidence.", flush=True)
 
     ## 4. Link OT evidence to target-disease pairs. Perform the join on both diseaseId and targetId

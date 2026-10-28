@@ -408,3 +408,44 @@ do not mix old and new outputs or use `escapechar="\\"` to compensate. That sett
 can consume a literal trailing backslash and merge two fields. No malformed rows
 are skipped. The Spark round-trip regression can be run with `RUN_SPARK_TESTS=1`
 in an environment with Java/PySpark; the default suite tests step 2 text preservation.
+
+## Association schema and dated-evidence coverage (26.09)
+
+Step 4 now selects `aggregationType == "datasourceId"`, maps `aggregationValue`
+to `datasourceId`, and exports `associationScore` as `score`. It reconstructs
+`datatypeId` from the public Open Targets pipeline's `datasource_weights` mapping.
+The source URL and configuration SHA-256 are recorded in `association_schema.py`.
+This mapping was checked against the public configuration, **not a release-tagged
+26.09 configuration**. It covers all 20 sources observed in the supplied 26.09
+schema inspection. Unknown datasource IDs fail explicitly and must be reviewed;
+no unknown source is silently dropped or assigned a guessed datatype.
+
+[Mapping source](https://github.com/opentargets-archive/pts/blob/main/config.yaml).
+`known_drug` is still a datatype label for `clinical_precedence`; that does not
+mean the retired `known_drug` dataset is downloaded. Association timeseries are
+not substituted for the older curation/publication/study dates.
+
+Step 5 joins only exact `diseaseId,targetId,datasourceId` keys. In particular it
+**does not alias** `clinical_precedence` to `chembl` or `gwas_credible_sets` to
+`ot_genetics_portal`. The older dated-evidence snapshot is not equivalent to 26.09.
+The output adds `datedEvidenceStatus`:
+
+- `no_association`: the literature row has no matched association datasource.
+- `source_absent`: the datasource does not occur in the dated-evidence input.
+- `pair_absent`: that source exists, but no dated row matches this target/disease.
+- `dates_missing`: a dated row matches but contains no usable year values.
+- `matched`: at least one year is available.
+
+Missing years remain null. Year lists are sorted, deduplicated and serialized as
+JSON arrays for TSV output, preserving the notebook's list-text interface. Missing
+or non-integer year values do not become invented dates. All step 4 rows are
+preserved. A companion `<output>.dated_coverage.json` records the input location,
+join policy and counts by datasource/status over unique association keys. It is
+written during the coverage check; job success and the final TSV must still be
+checked separately. Inspect this report before temporal analyses: a missing date
+is not evidence that an association did not exist. Even identical source IDs do
+not guarantee equivalent coverage across releases. Temporal plots based on the
+older snapshot describe only the subset with available dates.
+
+The existing step 4 and step 5 CLI arguments are unchanged. Update the cluster
+checkout and rerun step 4, then step 5. Steps 1–3 and downloads need not be repeated.

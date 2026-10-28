@@ -357,3 +357,23 @@ parquet. Wait for successful completion, then rerun step 2. No downloads need to
 repeated. Do not skip bad rows or add `escapechar` to pandas. Existing same-named
 step 1 outputs will be replaced; copy them elsewhere first if retaining the old
 exports is useful. Spark round-trip tests require the cluster Java/PySpark environment.
+
+## Association migration: rerun from step 4
+
+After pulling the updated code, reuse the existing step 4 Slurm script. Inputs from
+steps 1–3 are reusable. Step 4 handles aggregationType/aggregationValue and restores
+datatypeId using the documented public OT mapping (not a verified release-tagged
+mapping). Unknown sources fail rather than being guessed.
+
+Step 5 keeps exact source IDs: newer clinical_precedence/gwas_credible_sets are not
+renamed to older chembl/ot_genetics_portal. After step 5, inspect:
+
+```bash
+cat "$RUN_DIR/intermediate/5_ner_probes_triplets_ptpairs_evd.tsv.dated_coverage.json"
+```
+
+Missing dates stay null. The new datedEvidenceStatus distinguishes source_absent,
+pair_absent, dates_missing, no_association and matched. The older dated snapshot
+provides incomplete coverage of current associations; interpret temporal results
+only within that coverage. Neither missing dates nor missing source matches imply
+absence of historical evidence. Existing step 4/5 job arguments are unchanged.
