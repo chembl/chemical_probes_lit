@@ -1,5 +1,6 @@
 """Annotate a large TSV in chunks, with resumable SQLite PubMed lookups."""
 import argparse
+from email.utils import parsedate_to_datetime
 from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
@@ -11,9 +12,20 @@ import requests
 URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi'
 
 
+def retry_after_seconds(value):
+    """Parse Retry-After seconds or HTTP date; ignore malformed headers."""
+    try:
+        return max(0.0, float(value))
+    except (TypeError, ValueError):
+        try:
+            return max(0.0, (parsedate_to_datetime(value) - datetime.now(timezone.utc)).total_seconds())
+        except (TypeError, ValueError, OverflowError):
+            return 0.0
+
+
 def fetch_batch(session, pmids):
     """Return successful classifications only; absent/invalid records stay unknown."""
-    for attempt in range(3):
+    for attempt in range(5):
         try:
             response = session.post(URL, data={
                 'db': 'pubmed', 'id': ','.join(pmids), 'retmode': 'json',
@@ -34,12 +46,18 @@ def fetch_batch(session, pmids):
                 labels[pmid] = 'review' if 'Review' in types else 'primary'
             return labels
         except (requests.RequestException, ValueError) as error:
-            print(f'PubMed attempt {attempt + 1}/3 failed: {error}', flush=True)
-            if attempt < 2:
+            print(f'PubMed attempt {attempt + 1}/5 failed: {error}', flush=True)
+            response = getattr(error, 'response', None)
+            if response is not None and response.status_code == 429:
+                delay = max(30 * (2 ** attempt), retry_after_seconds(response.headers.get('Retry-After')))
+                print(f'Rate limited; waiting {delay:.0f} seconds before another request', flush=True)
+                # Also wait on the last attempt to avoid hammering the next batch.
+                time.sleep(delay)
+            elif attempt < 4:
                 time.sleep(2 ** attempt)
         finally:
-            # Below the unauthenticated three-requests-per-second limit.
-            time.sleep(0.4)
+            # Conservative pacing; shared cluster egress can still be rate limited.
+            time.sleep(1.1)
     return {}
 
 

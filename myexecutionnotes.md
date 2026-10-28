@@ -398,3 +398,11 @@ Check the completion log for unresolved counts before review-exclusion analysis.
 Do not rerun steps 1–7. Allow space for another roughly input-sized TSV. Output is
 published after all chunks are written; writing restarts after interruption, but
 cached API work is retained. The notebook's own large-file memory needs remain.
+
+### Retrying PubMed HTTP 429 failures
+
+Pull the updated script 9 with slower pacing and Retry-After-aware backoff, then
+resubmit the existing `step9_reviews.sh` using the SAME SQLite cache. Only unresolved
+PMIDs are requested again. The 89 GB TSV is still read twice and rewritten, so
+allow the full I/O time. Do not run simultaneous annotation jobs. Check the new
+completion log for unresolved IDs; not all missing records are transient failures.

@@ -487,3 +487,11 @@ requirements; this change only bounds script 9's working data.
 For the current 89 GB input, start with a 32 GB Slurm allocation and reduce
 `--chunk-size` if necessary. Memory depends on row width; this is not a guarantee.
 Allow space for a complete additional TSV, the SQLite cache and its temporary tables.
+
+PubMed rate limiting: script 9 now waits 1.1 seconds after each request and tries
+up to five times per batch. HTTP 429 triggers waits of 30, 60, 120, 240 and 480
+seconds, or longer if the server's `Retry-After` header requests it. Shared cluster
+network traffic can still cause throttling. After a run with unresolved IDs, reuse
+the same cache to retry them; successful entries are not queried again. The two
+TSV passes and output writing are still repeated. Missing records may remain
+unresolved even when requests succeed; do not interpret blanks as primary articles.

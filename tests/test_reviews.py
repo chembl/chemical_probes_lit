@@ -52,6 +52,30 @@ class ReviewTests(unittest.TestCase):
             self.assertEqual((root/'out.tsv').read_text(),'previous output')
             self.assertEqual(list(root.glob('*.part')),[])
 
+    def test_rate_limit_honours_retry_after_and_recovers(self):
+        import requests
+        session = Mock()
+        limited = Mock(status_code=429, headers={'Retry-After': '90'})
+        limited.raise_for_status.side_effect = requests.HTTPError('429', response=limited)
+        success = Mock()
+        success.json.return_value = {'result': {'1': {'pubtype': ['Review']}}}
+        session.post.side_effect = [limited, success]
+        with patch.object(reviews.time, 'sleep') as sleep:
+            self.assertEqual(reviews.fetch_batch(session, ['1']), {'1': 'review'})
+        sleep.assert_any_call(90.0)
+        self.assertEqual(session.post.call_count, 2)
+
+    def test_exhausted_rate_limit_keeps_unknown(self):
+        import requests
+        session = Mock()
+        limited = Mock(status_code=429, headers={})
+        limited.raise_for_status.side_effect = requests.HTTPError('429', response=limited)
+        session.post.return_value = limited
+        with patch.object(reviews.time, 'sleep') as sleep:
+            self.assertEqual(reviews.fetch_batch(session, ['1']), {})
+        self.assertEqual(session.post.call_count, 5)
+        sleep.assert_any_call(480)
+
     def test_input_output_must_differ(self):
         with self.assertRaises(ValueError):
             reviews.annotate('same.tsv','same.tsv','cache.sqlite')
