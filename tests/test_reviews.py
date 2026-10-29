@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import Mock, patch
 import pandas as pd
 
-spec = importlib.util.spec_from_file_location('reviews', Path(__file__).resolve().parents[1] / '2_probesLit/9_reviews.py')
+spec = importlib.util.spec_from_file_location('reviews', Path(__file__).resolve().parents[1] / '2_probesLit/8_classify_article_types.py')
 reviews = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(reviews)
 

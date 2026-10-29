@@ -203,13 +203,18 @@ python "$CODE_DIR/2_probesLit/7_get_drug_max_phase.py" \
 
 All step 1–7 outputs are **TSV files**, not comma-separated CSV files.
 
-## Article types and plotting (scripts 9 and 8)
+## Steps 8–10: article types, plotting preparation and figures
 
-Despite its number, run `9_reviews.py` before the full plotting notebook: the
-notebook's review-exclusion analysis needs the `articleType` column.
+Run the final stages in numerical order:
+
+8. `8_classify_article_types.py`: add PubMed article types.
+9. `9_prepare_plotting_data.py`: prepare the smaller plotting extract.
+10. `10_plotting_data.ipynb`: generate the final figures.
+
+The notebook's review-exclusion analysis needs the `articleType` column from step 8.
 
 ```bash
-python "$CODE_DIR/2_probesLit/9_reviews.py" \
+python "$CODE_DIR/2_probesLit/8_classify_article_types.py" \
     --input "$RUN_DIR/results/7_ner_probes_triplets_ptpairs_dr.tsv" \
     --output "$RUN_DIR/results/9_ner_probes_triplets_reviews.tsv"
 ```
@@ -217,14 +222,17 @@ python "$CODE_DIR/2_probesLit/9_reviews.py" \
 This queries PubMed and writes a separate annotated file, preserving step 7's
 output. Review its reported failed requests before interpreting review exclusions.
 
-Set the notebook environment before launching Jupyter from your activated environment:
+First prepare the column-reduced plotting extract with script 9; follow the
+[manuscript plotting guide](PLOTTING.md). Then set the notebook environment before
+launching Jupyter from your activated environment:
 
 ```bash
 export PROBES_INPUT_DIR="$INPUT_DIR"
 export PROBES_RUN_DIR="$RUN_DIR"
-export PROBES_ANALYSIS_FILE="$RUN_DIR/results/9_ner_probes_triplets_reviews.tsv"
+export PROBES_ANALYSIS_FILE="$RUN_DIR/results/plotting/plotting_data.tsv.gz"
+export CHEMBL_SQLITE="/actual/path/to/chembl_35.db"
 cd "$CODE_DIR/2_probesLit"
-jupyter lab 8_plotting_data.ipynb
+jupyter lab 10_plotting_data.ipynb
 ```
 
 Install JupyterLab separately if it is not provided by your environment. Select the
@@ -291,7 +299,7 @@ sbatch --dependency=afterok:123456 \
 ```
 
 Use the same run paths throughout a chain and do not edit them while jobs are queued.
-Step 0, step 3 and script 9 need network access; use your institution's permitted
+Step 0, step 3 and script 8 need network access; use your institution's permitted
 transfer/compute setup. Slurm script syntax and job dependencies are documented in
 [the official sbatch reference](https://slurm.schedmd.com/sbatch.html).
 
@@ -450,9 +458,9 @@ older snapshot describe only the subset with available dates.
 The existing step 4 and step 5 CLI arguments are unchanged. Update the cluster
 checkout and rerun step 4, then step 5. Steps 1–3 and downloads need not be repeated.
 
-## Large-file article annotation (script 9)
+## Large-file article annotation (script 8)
 
-Script 9 processes the step 7 TSV in two passes, without loading the full dataset
+Script 8 processes the step 7 TSV in two passes, without loading the full dataset
 or all unique PMIDs into memory. Pass 1 collects unique valid numeric PMIDs into a
 SQLite cache; PubMed lookups run in batches of 200 with timeouts, retries and rate
 limiting. Each batch is committed, so restarting reuses successful classifications
@@ -461,7 +469,7 @@ original field text, row order and row count. Quotes, backslashes, tabs and embe
 newlines use the shared TSV convention.
 
 ```bash
-python "$CODE_DIR/2_probesLit/9_reviews.py" \
+python "$CODE_DIR/2_probesLit/8_classify_article_types.py" \
     --input "$RUN_DIR/results/7_ner_probes_triplets_ptpairs_dr.tsv" \
     --output "$RUN_DIR/results/9_ner_probes_triplets_reviews.tsv" \
     --cache "$RUN_DIR/results/pubmed_article_types.sqlite" \
@@ -482,16 +490,32 @@ successful job may still have incomplete API coverage. As before, `primary` mean
 returned nonempty publication-type list without the exact `Review` label, not a
 validated primary-research study design. Interpret or exclude unknown classifications
 explicitly in subsequent analyses. The plotting notebook still has its own memory
-requirements; this change only bounds script 9's working data.
+requirements; this change only bounds script 8's working data.
 
 For the current 89 GB input, start with a 32 GB Slurm allocation and reduce
 `--chunk-size` if necessary. Memory depends on row width; this is not a guarantee.
 Allow space for a complete additional TSV, the SQLite cache and its temporary tables.
 
-PubMed rate limiting: script 9 now waits 1.1 seconds after each request and tries
+PubMed rate limiting: script 8 now waits 1.1 seconds after each request and tries
 up to five times per batch. HTTP 429 triggers waits of 30, 60, 120, 240 and 480
 seconds, or longer if the server's `Retry-After` header requests it. Shared cluster
 network traffic can still cause throttling. After a run with unresolved IDs, reuse
 the same cache to retry them; successful entries are not queried again. The two
 TSV passes and output writing are still repeated. Missing records may remain
 unresolved even when requests succeed; do not interpret blanks as primary articles.
+
+## Pipeline numbering and existing runs
+
+The final execution order is **8: classify article types → 9: prepare plotting data
+→ 10: plot figures**. Script and notebook renaming does not change analysis or
+figure styling. The commands retain `9_ner_probes_triplets_reviews.tsv` as the
+article-annotated output filename for compatibility with completed runs; its `9_`
+prefix is a legacy filename, not the current step number. No data files need to be
+renamed, and completed annotation jobs do not need rerunning. Reuse the existing
+`pubmed_article_types.sqlite` cache.
+
+Private Slurm scripts live outside Git, so pulling code does not update them.
+Before submitting future annotation jobs, change the Python filename inside your
+existing review wrapper to `8_classify_article_types.py`; name that wrapper
+`step8_reviews.sh`. The preparation wrapper is now `step9_plotting_data.sh`, invoking
+`9_prepare_plotting_data.py`. Open `10_plotting_data.ipynb` for the final figures.

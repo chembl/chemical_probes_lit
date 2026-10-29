@@ -328,7 +328,7 @@ python "$CODE_DIR/2_probesLit/7_get_drug_max_phase.py" \
     --output "$RUN_DIR/results/7_ner_probes_triplets_ptpairs_dr.tsv"
 ```
 
-Use appropriate Spark resources for step 7. Re-run step 9 afterward, then the
+Use appropriate Spark resources for step 7. Re-run step 8 afterward, then the
 updated plotting notebook. Output now contains `maxClinicalStage`,
 `clinicalStageRank`, and `hasClinicalIndication` instead of `phase` and `status`.
 Ranks are not phases; UNKNOWN is distinct from no matched indication. The actual
@@ -378,12 +378,12 @@ provides incomplete coverage of current associations; interpret temporal results
 only within that coverage. Neither missing dates nor missing source matches imply
 absence of historical evidence. Existing step 4/5 job arguments are unchanged.
 
-## Script 9: chunked article-type annotation
+## Script 8: chunked article-type annotation
 
-After updating the cluster checkout, run script 9 using the existing environment:
+After updating the cluster checkout, run script 8 using the existing environment:
 
 ```bash
-python -u "$CODE_DIR/2_probesLit/9_reviews.py" \
+python -u "$CODE_DIR/2_probesLit/8_classify_article_types.py" \
     --input "$RUN_DIR/results/7_ner_probes_triplets_ptpairs_dr.tsv" \
     --output "$RUN_DIR/results/9_ner_probes_triplets_reviews.tsv" \
     --cache "$RUN_DIR/results/pubmed_article_types.sqlite" \
@@ -401,8 +401,62 @@ cached API work is retained. The notebook's own large-file memory needs remain.
 
 ### Retrying PubMed HTTP 429 failures
 
-Pull the updated script 9 with slower pacing and Retry-After-aware backoff, then
-resubmit the existing `step9_reviews.sh` using the SAME SQLite cache. Only unresolved
+Pull the updated script 8 with slower pacing and Retry-After-aware backoff, then
+resubmit the existing `step8_reviews.sh` using the SAME SQLite cache. Only unresolved
 PMIDs are requested again. The 89 GB TSV is still read twice and rewritten, so
 allow the full I/O time. Do not run simultaneous annotation jobs. Check the new
 completion log for unresolved IDs; not all missing records are transient failures.
+
+
+## Prepare manuscript-comparable plotting inputs (step 9)
+
+Follow [the plotting guide](2_probesLit/PLOTTING.md) for the full private Slurm job.
+The command inside that job is:
+
+```bash
+python -u "$CODE_DIR/2_probesLit/9_prepare_plotting_data.py" \
+  --input "$RUN_DIR/results/9_ner_probes_triplets_reviews.tsv" \
+  --output "$RUN_DIR/results/plotting/plotting_data.tsv.gz" \
+  --chunk-size 10000
+```
+
+Expect the same 1,377,038 rows. The extract drops unused bulky columns, not rows;
+no sampling or deduplication is performed. Plots keep manuscript styles and cutoffs.
+Set PROBES_ANALYSIS_FILE to the new .tsv.gz and CHEMBL_SQLITE to ChEMBL 35 before
+running the notebook. Original data remains intact; steps 1–8 need no rerun.
+The notebook still needs memory for the reduced data and copies. Check the extract
+size and reported in-memory size before selecting local/cluster plotting resources.
+Default review exclusion retains unknown article types for continuity, with an
+explicit count; the optional stricter policy must be treated as a separate analysis.
+
+## Pipeline numbering and existing runs
+
+The final execution order is **8: classify article types → 9: prepare plotting data
+→ 10: plot figures**. Script and notebook renaming does not change analysis or
+figure styling. The commands retain `9_ner_probes_triplets_reviews.tsv` as the
+article-annotated output filename for compatibility with completed runs; its `9_`
+prefix is a legacy filename, not the current step number. No data files need to be
+renamed, and completed annotation jobs do not need rerunning. Reuse the existing
+`pubmed_article_types.sqlite` cache.
+
+Private Slurm scripts live outside Git, so pulling code does not update them.
+Before submitting future annotation jobs, change the Python filename inside your
+existing review wrapper to `8_classify_article_types.py`; name that wrapper
+`step8_reviews.sh`. The preparation wrapper is now `step9_plotting_data.sh`, invoking
+`9_prepare_plotting_data.py`. Open `10_plotting_data.ipynb` for the final figures.
+
+### Update the existing private review wrapper after pulling
+
+On the cluster, run this once if the wrapper still has its old name:
+
+```bash
+cd /nfs/production/arl/chembl/madasme/projects/chemical_probes/cluster
+mv -n step9_reviews.sh step8_reviews.sh
+sed -i 's/9_reviews\.py/8_classify_article_types.py/g; s/probes-step9/probes-step8/g' step8_reviews.sh
+bash -n step8_reviews.sh
+```
+
+For future submissions, use `step8_reviews.sh` and log filenames `step8-%j.out`
+and `step8-%j.err`. Existing job logs keep their original names. Do not submit an
+annotation job merely because the script was renamed: the current completed
+review output can go straight into step 9 preparation.
