@@ -1,9 +1,9 @@
-from tsv_format import read_spark_tsv
-from tools import write_merged_files
+from helpers.tsv_format import read_spark_tsv
+from helpers.tools import write_merged_files
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import concat_ws
 import argparse
-from pipeline_paths import output_path
+from helpers.pipeline_paths import output_path
 
 def main(input_path, OTdisease_path, output):
     output = output_path(output)

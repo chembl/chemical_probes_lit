@@ -10,8 +10,8 @@ from unittest.mock import Mock, patch
 
 PIPELINE = Path(__file__).resolve().parents[1] / '2_probesLit'
 sys.path.insert(0, str(PIPELINE))
-from clinical_stages import STAGE_RANK, stage_label
-from ot_download import list_parquet_files, download_files
+from helpers.clinical_stages import STAGE_RANK, stage_label
+from helpers.ot_download import list_parquet_files, download_files
 
 
 def response(text='', content=b'', headers=None):
@@ -49,7 +49,7 @@ class DownloadTests(unittest.TestCase):
             output.write_bytes(b'previous')
             session = Mock()
             session.get.side_effect = [response(content=b'bad', headers={'Content-Length': '10'}) for _ in range(3)]
-            with patch('ot_download.time.sleep'), self.assertRaises(requests.RequestException):
+            with patch('helpers.ot_download.time.sleep'), self.assertRaises(requests.RequestException):
                 download_files(session, [('file.parquet', 'https://example.test/file.parquet')], directory)
             self.assertEqual(output.read_bytes(), b'previous')
             self.assertFalse(Path(str(output) + '.part').exists())

@@ -7,9 +7,11 @@ It takes the data and for each
 
 import pandas as pd
 import argparse
-from pipeline_paths import output_path
+from helpers.pipeline_paths import output_path
 import itertools
 import csv
+import json
+from helpers.probe_dictionary import synonym_lookup, reground_chemicals
 
 
 def main(df_path, d_path, output):
@@ -24,11 +26,11 @@ def main(df_path, d_path, output):
     print("Total label ids:{}".format(dataset.label_id.count()), flush=True)
 
     ## 3. creating probes-chembl dictionary to improve probes grounding (some ids need to be updated)
-    hqprobes = hqprobes_main[['CHEMBLID', 'SYNOMS']]
-    hqprobes_exp = hqprobes.assign(SYNOMS=hqprobes['SYNOMS'].str.split(',')).explode('SYNOMS')
-    hqprobes_dict = dict(zip(hqprobes_exp.SYNOMS,hqprobes_exp.CHEMBLID))
-
-    dataset['label_id'] = dataset['label'].map(hqprobes_dict).fillna(dataset['label_id'])
+    hqprobes_dict, conflicts = synonym_lookup(hqprobes_main)
+    with open(output + ".synonym_conflicts.json", "w") as handle:
+        json.dump(conflicts, handle, indent=2)
+    print(f"Ambiguous synonyms retained with original OT IDs: {len(conflicts)}", flush=True)
+    reground_chemicals(dataset, hqprobes_dict)
     print("Total labels after chembl improving:{}".format(dataset.label_id.count()), flush=True) #same number expected
 
     ## 4. Removing rows without ids

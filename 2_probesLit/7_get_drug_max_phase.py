@@ -1,8 +1,8 @@
-from tsv_format import read_spark_tsv
+from helpers.tsv_format import read_spark_tsv
 """Add disease-specific maximum clinical stage using OT clinical datasets."""
 import argparse
-from clinical_stages import STAGE_RANK
-from pipeline_paths import output_path
+from helpers.clinical_stages import STAGE_RANK
+from helpers.pipeline_paths import output_path
 
 
 def clinical_pairs(targets, indications):
@@ -45,7 +45,7 @@ def clinical_pairs(targets, indications):
 
 def main(input_path, clinical_target_path, clinical_indication_path, output):
     from pyspark.sql import SparkSession, functions as f
-    from tools import write_merged_files
+    from helpers.tools import write_merged_files
 
     output = output_path(output)
     spark = (SparkSession.builder.appName('Chemical Probes Clinical Stage')

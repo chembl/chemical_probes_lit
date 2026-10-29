@@ -1,11 +1,11 @@
-from tsv_format import read_spark_tsv
+from helpers.tsv_format import read_spark_tsv
 ###  Author: Melissa F. Adasme ###
 
-from association_schema import normalize_associations
-from tools import write_merged_files
+from helpers.association_schema import normalize_associations
+from helpers.tools import write_merged_files
 from pyspark.sql import SparkSession
 import argparse
-from pipeline_paths import output_path
+from helpers.pipeline_paths import output_path
 
 def main(input_path, OTevidence_path, output):
     output = output_path(output)

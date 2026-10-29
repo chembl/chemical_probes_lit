@@ -9,3 +9,9 @@ pd_02_2024.sqlite
 *.db
 *.sqlite
 data_last_modifications.png
+
+# Private execution notes (keep local; copy to cluster separately)
+/cluster_execution.md
+
+# Private local notebook configuration
+/local_plotting_setup.py

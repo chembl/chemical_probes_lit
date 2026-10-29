@@ -8,7 +8,7 @@ import pandas as pd
 
 PIPELINE = Path(__file__).resolve().parents[1] / '2_probesLit'
 sys.path.insert(0, str(PIPELINE))
-from plotting_data import PLOT_COLUMNS, load_plotting_data, review_selection
+from helpers.plotting_data import PLOT_COLUMNS, load_plotting_data, review_selection
 spec = importlib.util.spec_from_file_location('prepare_plot', PIPELINE / '9_prepare_plotting_data.py')
 prepare = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(prepare)
@@ -29,6 +29,9 @@ class PlottingTests(unittest.TestCase):
                        clinicalStageRank='6', maxClinicalStage='PHASE_2',
                        hasClinicalIndication='true', score='0.500', evidenceCount='2',
                        allcurationYears='[2001, 2003]', datedEvidenceStatus='matched',
+                       firstEvidenceYear='2002', allEvidenceYears='[2002, 2003]',
+                       evidenceYearPolicy='record:publication>curation>study>evidenceDate',
+                       earliestYearOrigins='["publicationYear"]', datedEvidenceCount='2', undatedEvidenceCount='1',
                        articleType=['review','primary',''][index % 3],
                        control='UNUSED' * 1000, probeSyn='huge unused synonyms', targetSyn='unused')
             rows.append(row)
@@ -46,6 +49,8 @@ class PlottingTests(unittest.TestCase):
             pd.testing.assert_frame_equal(full[PLOT_COLUMNS],reduced[PLOT_COLUMNS])
             manifest=json.loads((root/'plot.tsv.gz.manifest.json').read_text())
             self.assertEqual(manifest['rows'],25)
+            self.assertEqual(manifest['evidence_year_policy_row_counts'], {'record:publication>curation>study>evidenceDate':25})
+            self.assertTrue(reduced.firstEvidenceYear.eq(2002).all())
             self.assertIn('control',manifest['omitted_columns'])
             # Aggregations used by histogram, heatmaps and sentence-section counts.
             for keys in [['probeId'], ['targetId','diseaseId'], ['datasourceId']]:

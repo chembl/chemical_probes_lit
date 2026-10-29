@@ -3,7 +3,7 @@ import argparse
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from ot_download import make_session, list_parquet_files, download_files
+from helpers.ot_download import make_session, list_parquet_files, download_files
 
 
 def main():

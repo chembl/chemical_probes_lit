@@ -8,7 +8,7 @@ import unittest
 
 PIPELINE = Path(__file__).resolve().parents[1] / '2_probesLit'
 sys.path.insert(0, str(PIPELINE))
-from tools import write_merged_files
+from helpers.tools import write_merged_files
 
 
 class PipelinePathsTest(unittest.TestCase):

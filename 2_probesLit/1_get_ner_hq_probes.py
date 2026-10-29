@@ -1,4 +1,4 @@
-from tsv_format import read_spark_tsv
+from helpers.tsv_format import read_spark_tsv
 ###  Author: Melissa F. Adasme ###
 
 """
@@ -10,9 +10,9 @@ The mappedId field is exported as label_id for downstream pipeline steps.
 
 import pyspark.sql.functions as f
 from pyspark.sql import SparkSession
-from tools import write_merged_files
+from helpers.tools import write_merged_files
 import argparse
-from pipeline_paths import output_path
+from helpers.pipeline_paths import output_path
 
 def main(probes_path, matches_path, output, intermediate_output=None):
     """
@@ -44,9 +44,12 @@ def main(probes_path, matches_path, output, intermediate_output=None):
     hq_probes = (
         read_spark_tsv(spark, probes_path)
         .selectExpr("SYNOMS as probes")
-        .select(f.explode(f.split(f.col("probes"), ", ")))
+        .select(f.explode(f.split(f.col("probes"), ",")))
         .distinct()
-        .withColumnRenamed("col", "label")
+        .withColumnRenamed("col", "_hq_label")
+        .withColumn("_hq_label", f.trim(f.col("_hq_label")))
+        .filter(f.col("_hq_label") != "")
+        .distinct()
     )
     print("✅ Loaded HQ probe labels.", flush=True)
 
@@ -75,7 +78,9 @@ def main(probes_path, matches_path, output, intermediate_output=None):
 
     # 4. Find articles with HQ probes and write the intermediate file containning all articles mentioning at least one chemical probe
     print(f"Finding articles with HQ probes and writing to intermediate file: {inter_output_dir}", flush=True)
-    epmc_ner_results_subset = epmc_ner_results.join(f.broadcast(hq_probes), "label")
+    epmc_ner_results_subset = epmc_ner_results.join(
+        f.broadcast(hq_probes), f.trim(epmc_ner_results.label) == hq_probes._hq_label
+    ).drop("_hq_label")
 
     #Writing output file
     temp_output_dir = output + ".parts"

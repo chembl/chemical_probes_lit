@@ -8,7 +8,7 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import pandas as pd
-from plotting_data import PLOT_COLUMNS
+from helpers.plotting_data import PLOT_COLUMNS
 
 
 def triplet_summary(path, chunk_size, scratch):
@@ -55,6 +55,7 @@ def prepare(source, output, chunk_size=10000, triplets=None):
     rows = 0
     classifications = Counter()
     coverage = Counter()
+    date_policies = Counter()
     try:
         with gzip.open(temporary, 'wt', encoding='utf-8', newline='', compresslevel=1) as destination:
             with pd.read_csv(source, sep='\t', usecols=PLOT_COLUMNS, dtype=str,
@@ -67,6 +68,7 @@ def prepare(source, output, chunk_size=10000, triplets=None):
                     rows += len(frame)
                     classifications.update(frame.articleType.replace('', 'unknown'))
                     coverage.update(frame.datedEvidenceStatus.replace('', 'unknown'))
+                    date_policies.update(frame.evidenceYearPolicy.replace('', 'unmatched'))
                     print(f'Prepared {rows:,} plotting rows', flush=True)
         after = source.stat()
         if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
@@ -82,6 +84,7 @@ def prepare(source, output, chunk_size=10000, triplets=None):
             'row_policy': 'All rows, original order, no deduplication or sampling',
             'article_type_row_counts': dict(classifications),
             'dated_evidence_status_row_counts': dict(coverage),
+            'evidence_year_policy_row_counts': dict(date_policies),
             'triplets_source': str(Path(triplets).resolve()) if triplets else None,
             'triplet_summary': summary,
         }

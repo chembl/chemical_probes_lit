@@ -29,7 +29,7 @@ This project leverages Natural Language Processing (NLP) to systematically analy
 │   ├── 📜 8_classify_article_types.py        # Step 8: Annotates PubMed article types.
 │   ├── 📜 9_prepare_plotting_data.py          # Step 9: Prepares a smaller plotting extract.
 │   ├── 📓 10_plotting_data.ipynb              # Jupyter Notebook for final data visualisation.
-|   └── 📜 tools.py                           # Helper scripts for handling data.
+|   └── 📁 helpers/                           # Shared modules, including tools.py.
 │
 ├── 📂 3_probesHQ/                            # Scripts and data to build the High-Quality (HQ) chemical probes dictionary.
 │   ├── 📂 files/                             # Raw data files for the HQ probe dictionary.
@@ -74,6 +74,10 @@ This dataset contains all existing target-disease association evidence curated b
     - Public Access: http://ftp.ebi.ac.uk/pub/databases/opentargets/platform/26.09/output/association_by_datasource_indirect
 
 3. Dated Open Targets Evidence
+
+    **Current pipeline:** step 5 uses release-matched association time series already
+    downloaded in step 0. The older dataset below is an optional historical input.
+    See [date rules and migration](2_probesLit/README.md#temporal-evidence-dates).
 
 This dataset provides time stamps for the evidence, which is crucial for the temporal analysis.
 

@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / '2_probesLit'))
-from association_schema import DATASOURCE_DATATYPE, normalize_associations, join_dated_evidence
+from helpers.association_schema import DATASOURCE_DATATYPE, normalize_associations, join_dated_evidence
 
 
 class MappingTests(unittest.TestCase):

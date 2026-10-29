@@ -11,7 +11,7 @@ This notebook uses the HQ probes dataset from ChEMBL to filter that.
 import pandas as pd
 import requests
 import argparse
-from pipeline_paths import output_path
+from helpers.pipeline_paths import output_path
 
 def main(input_path, probes_path, output):
     output = output_path(output)

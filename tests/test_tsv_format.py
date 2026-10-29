@@ -10,7 +10,7 @@ import pandas as pd
 
 PIPELINE = Path(__file__).resolve().parents[1] / '2_probesLit'
 sys.path.insert(0, str(PIPELINE))
-from tsv_format import read_spark_tsv
+from helpers.tsv_format import read_spark_tsv
 
 SENTENCE = '  NF-\\ and \\documentclass: "quoted"\ttext\nnext line  '
 
@@ -40,7 +40,7 @@ class TripletTSVTests(unittest.TestCase):
 class SparkTSVTests(unittest.TestCase):
     def test_spark_pandas_roundtrip(self):
         from pyspark.sql import SparkSession
-        from tools import write_merged_files
+        from helpers.tools import write_merged_files
         spark = SparkSession.builder.master('local[1]').appName('tsv-regression').getOrCreate()
         try:
             with tempfile.TemporaryDirectory() as directory:
