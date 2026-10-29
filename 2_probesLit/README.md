@@ -162,7 +162,19 @@ python "$CODE_DIR/2_probesLit/3_filter_targets.py" \
     --output "$RUN_DIR/intermediate/3_ner_probes_triplets_ptpairs.tsv"
 ```
 
-This step queries the Ensembl REST API, so the execution node needs network access.
+This step queries Ensembl, so the compute node needs network access. It retries
+HTTP 429/5xx, connection failures and malformed responses up to five times with
+bounded delays and request timeouts. A request that remains unresolved stops the
+job before replacing the output, preventing silent target loss. Only an explicit
+symbol-not-found response is reported as a missing mapping.
+
+Successful mappings are saved after each lookup in
+`intermediate/ensembl_gene_mappings.json` by default. Reuse this cache for retries;
+use a fresh cache for a new analysis because the Ensembl endpoint is not release-pinned.
+Optional `--gene-cache PATH` selects another location. The output's
+`.mapping_report.json` records mapping coverage, missing symbols and input/output
+row counts. Review these counts before using downstream results. The existing
+exact GENE-to-ID matching policy is retained.
 
 ### 4. Add Open Targets evidence
 
