@@ -1,0 +1,1 @@
+Pilot input files are stored locally and are not distributed with this repository. Set `PILOT_OT_GROUNDING_FILE` to the local `epmc_ner_results_subset_sent.tsv` file before running the Open Targets identifier-mapping cell in the pilot notebook.
