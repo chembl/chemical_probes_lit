@@ -7,40 +7,67 @@ This repository contains all the code and scripts necessary to reproduce the ana
 This project leverages Natural Language Processing (NLP) to systematically analyse open-access scientific literature for evidence of novel target-disease (T-D) associations mediated by chemical probes. The pipeline identifies chemical probe-target-disease (P-T-D) triplets, quantifies their prevalence, and performs a temporal analysis to determine cases where probe-based evidence predates other non-literature evidence streams in platforms like Open Targets. The goal is to highlight the value of chemical probe literature as a resource for early-stage target validation and hypothesis generation in drug discovery.
 
 ## Project structure
+
+The numbered scripts in `2_probesLit/` run the systematic pipeline. Build or select
+its probe dictionary using `3_probesHQ/` first, then execute steps 0–9 and use the
+step 10 notebook for plotting. Shared code is grouped under `helpers/`.
+
+```text
+chemical_probes_lit/
+├── 1_pilot/                                  # Original pilot study
+│   ├── data/                                 # Local pilot inputs and results
+│   ├── figs/                                 # Local pilot figures
+│   ├── databases.py                          # Pilot database utilities
+│   └── note_ProbesDataset.ipynb               # Pilot extraction and analysis
+│
+├── 2_probesLit/                              # Systematic literature pipeline
+│   ├── 0_download_OT_files.py                 # Download Open Targets inputs
+│   ├── 1_get_ner_hq_probes.py                 # Select articles mentioning dictionary probes
+│   ├── 2_get_triplets.py                      # Extract sentence-level chemical–target–disease triples
+│   ├── 3_filter_targets.py                    # Retain dictionary-supported probe–target matches
+│   ├── 4_get_OT_evidence.py                   # Link Open Targets association evidence
+│   ├── 5_get_OT_dated_evidence.py             # Add release-matched evidence dates
+│   ├── 6_map_disease_therapeutic_area.py       # Add disease names and therapeutic areas
+│   ├── 7_get_drug_max_phase.py                # Add disease-specific clinical stages
+│   ├── 8_classify_article_types.py            # Classify PubMed article types
+│   ├── 9_prepare_plotting_data.py             # Prepare the compact plotting extract
+│   ├── 10_plotting_data.ipynb                 # Generate figures and supplementary tables
+│   ├── helpers/
+│   │   ├── association_schema.py             # Association schema and datasource mappings
+│   │   ├── clinical_stages.py                # Clinical-stage ordering and labels
+│   │   ├── evidence_dates.py                 # Date selection and coverage reporting
+│   │   ├── ot_download.py                    # Open Targets download utilities
+│   │   ├── pipeline_paths.py                 # Output-path handling
+│   │   ├── plotting_data.py                  # Plotting columns, loading and review selection
+│   │   ├── probe_dictionary.py               # Probe identifiers and synonym grounding
+│   │   ├── supplement_probe_dictionary.py    # Build a documented dictionary supplement
+│   │   ├── temporal_analysis.py              # Temporal-analysis calculations
+│   │   ├── tools.py                          # Shared database and file utilities
+│   │   └── tsv_format.py                     # Consistent TSV reading and writing
+│   └── README.md                             # Pipeline commands and analysis methods
+│
+├── 3_probesHQ/                               # Probe-dictionary construction
+│   ├── files/                                # Local source exports and database inputs
+│   ├── probes_hq_dataset.ipynb                # Assemble and filter the probe dictionary
+│   ├── tools.py                              # Dictionary database utilities
+│   └── README.md                             # Dictionary preparation instructions
+│
+├── tests/                                    # Pipeline and helper regression tests
+├── .gitignore                                # Exclude local data, figures and private files
+├── LICENCE
+├── requirements.txt                          # Python dependencies
+└── README.md                                 # Project overview
 ```
-├── 📂 1_pilot/                               # Code and data for the initial pilot study.  
-│   ├── 📂 data/                              # Data files specific to the pilot.  
-│   ├── 📂 figs/                              # Figures generated during the pilot.  
-│   ├── 📜 databases.py                       # Scripts for database interactions in the pilot.  
-│   └── 📓 note_ProbesDataset.ipynb           # Exploratory notebook for the pilot dataset.  
-│
-├── 📂 2_probesLit/                           # Code and data for the main systematic analysis pipeline.  
-│   ├── 📂 data/                              # Legacy local data; new runs use external storage.
-│   ├── 📂 figs/                              # Final figures for the manuscript.  
-│   ├── 📂 tables/                            # Final tables for the manuscript.  
-|   ├── 📜 0_download_OT_files.py.            # Step 0: download all open target files that are needed
-│   ├── 📜 1_get_ner_hq_probes.py             # Step 1: Fetches NER data for High-Quality (HQ) probes.  
-│   ├── 📜 2_get_triplets.py                  # Step 2: Extracts P-T-D triples from the NER data.  
-│   ├── 📜 3_filter_targets.py                # Step 3: Filters triples based on validated targets.  
-│   ├── 📜 4_get_OT_evidence.py               # Step 4: Retrieves existing evidence from Open Targets.  
-│   ├── 📜 5_get_OT_dated_evidence.py         # Step 5: Retrieves time-stamped evidence from Open Targets.  
-│   ├── 📜 6_map_disease_therapeutic_area.py  # Step 6: Retrieves therapeutic area (parent ontology id) from Open targets for the disease term 
-|   ├── 📜 7_get_drug_max_phase.py            # Step 7: Obtains the maximum disease-specific clinical stage for the specific T-D pair
-│   ├── 📜 8_classify_article_types.py        # Step 8: Annotates PubMed article types.
-│   ├── 📜 9_prepare_plotting_data.py          # Step 9: Prepares a smaller plotting extract.
-│   ├── 📓 10_plotting_data.ipynb              # Jupyter Notebook for final data visualisation.
-|   └── 📁 helpers/                           # Shared modules, including tools.py.
-│
-├── 📂 3_probesHQ/                            # Scripts and data to build the High-Quality (HQ) chemical probes dictionary.
-│   ├── 📂 files/                             # Raw data files for the HQ probe dictionary.
-│   ├── 📓 probes_hq_dataset.ipynb            # Notebook for creating and analysing the HQ probe dataset.
-│   └── 📜 tools.py                           # Helper scripts for handling probe data.
-│
-├── 📜 .gitignore                             # Specifies files and directories to be ignored by Git.
-├── ⚖️ LICENCE                                # Licence especifications
-├── 📜 requirements.txt                       # File with required packages to create the Python environment.  
-└── 📄 README.md                              # This file.
-```
+
+Systematic-pipeline inputs and outputs are stored **outside the repository**, with
+separate `inputs/` and run-specific `intermediate/`, `results/`, `figures/`, `tables/`
+and `logs/` folders. Private Slurm scripts and configuration also stay outside the
+checkout. The pilot retains its original local `data/` and `figs/` layout; local
+data and figure files are generally excluded by `.gitignore`.
+
+See the [pipeline guide](2_probesLit/README.md) for execution commands and the
+[dictionary guide](3_probesHQ/README.md) for input preparation.
+
 ## Data Availability
 We are committed to transparency and reproducibility. This section outlines the availability of the data for both the main systematic pipeline and the preliminary pilot study.
 
@@ -64,8 +91,6 @@ This is the primary dataset from the EuropePMC NER pipeline, containing entity m
 
     - Public Access: The required successful matches are available on the Open Targets HTTPS server
     https://ftp.ebi.ac.uk/pub/databases/opentargets/platform/latest/intermediate/literature/match/
-    - Internal Access (for development): The full dataset including "FailedMatches" (version 24.09) is available to Open Targets partners at 
-    gs://open-targets-pre-data-releases/24.09/output/etl/parquet/literature/matches
 
 2. Open Targets Evidence
 

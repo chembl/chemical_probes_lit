@@ -47,7 +47,6 @@ def initialize_sparksession() -> SparkSession:
     """Initialize spark session."""
 
     # Dynamically get the hostname of the current node
-    bind_address = 'codon-slurm-login-01.ebi.ac.uk'#socket.gethostname()
     spark_mem_limit = detect_spark_memory_limit()
     spark_conf = (
         SparkConf()

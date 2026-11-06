@@ -301,7 +301,10 @@ The notebook takes the earliest selected year across non-literature sources per
 pair. A positive lag means probe literature precedes the **available dated evidence**,
 not all published knowledge. The manuscript used the minimum across three historical
 date arrays; report this methodological change. Separate date-type Venn plots are
-omitted when OT provides only consolidated dates. For a date-only update, preserve
+omitted when OT provides only consolidated dates. The replacement coverage plot
+(`figures/supp_dated_evidence_coverage.png` and `.svg`) counts unique target–disease
+pairs with dated non-literature evidence, undated non-literature evidence, or no
+non-literature association in the input. For a date-only update, preserve
 old results, reuse step 4 and rerun steps 5–9 to new outputs. The updated notebook
 rejects extracts missing the new date fields.
 

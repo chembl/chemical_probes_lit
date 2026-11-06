@@ -15,3 +15,13 @@ data_last_modifications.png
 
 # Private local notebook configuration
 /local_plotting_setup.py
+
+# Local metadata, notebook checkpoints and secrets
+.DS_Store
+__pycache__/
+.ipynb_checkpoints/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
